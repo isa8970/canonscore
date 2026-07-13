@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
 const MIN_CARACTERES = 15;
+const MAX_CARACTERES = 1000;
 
 const Detalle = ({ item, onVolver }) => {
   const { usuario, esInvitado } = useAuth();
@@ -43,7 +44,8 @@ const Detalle = ({ item, onVolver }) => {
 
   const caracteresActuales = nuevoComentario.trim().length;
   const faltanCaracteres = MIN_CARACTERES - caracteresActuales;
-  const textoValido = caracteresActuales >= MIN_CARACTERES;
+  const sobranCaracteres = caracteresActuales - MAX_CARACTERES;
+  const textoValido = caracteresActuales >= MIN_CARACTERES && caracteresActuales <= MAX_CARACTERES;
 
   const deponerComentario = async (e) => {
     e.preventDefault();
@@ -94,25 +96,24 @@ const Detalle = ({ item, onVolver }) => {
           alt={item.titulo}
           className="w-full h-full object-cover object-top blur-sm scale-105 opacity-40"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
 
         <button
           onClick={onVolver}
-          className="absolute top-6 left-6 md:left-12 px-4 py-2 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all flex items-center gap-2"
-        >
+          className="absolute top-6 left-6 md:left-12 px-4 py-2 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 text-xs font-bold uppercase tracking-wider hover:bg-white/10 transition-all flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           Volver
         </button>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-6 -mt-24 md:-mt-28 relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+      <div className="max-w-300 mx-auto px-6 -mt-24 md:-mt-28 relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
 
         <div className="flex flex-col items-center md:items-start">
-          <div className="w-64 aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+          <div className="w-64 aspect-3/4 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
             <img src={item.imagen} alt={item.titulo} className="w-full h-full object-cover" />
           </div>
           <div className="mt-6 w-full bg-zinc-900/50 border border-white/5 rounded-2xl p-5">
-            <h4 className="text-xs font-black uppercase tracking-widest text-[var(--accent)] mb-3">{item.titulo}</h4>
+            <h4 className="text-xs font-black uppercase tracking-widest text-(--accent) mb-3">{item.titulo}</h4>
             <p className="text-sm opacity-60 mb-2"><span className="font-bold text-white">Año:</span> {item.anio}</p>
             <p className="text-sm opacity-60 mb-2"><span className="font-bold text-white">Género:</span> {item.genero}</p>
             <p className="text-sm opacity-60"><span className="font-bold text-white">Plataforma / Disponibilidad:</span> Ficticio (Alfa)</p>
@@ -120,7 +121,7 @@ const Detalle = ({ item, onVolver }) => {
         </div>
 
         <div className="md:col-span-2 text-left flex flex-col justify-start">
-          <span className="px-3 py-1 self-start rounded-md bg-[var(--accent)]/20 border border-[var(--accent)]/30 text-[var(--accent)] text-[10px] font-black uppercase tracking-widest mb-3">
+          <span className="px-3 py-1 self-start rounded-md bg-(--accent)/20 border border-(--accent)/30 text-(--accent) text-[10px] font-black uppercase tracking-widest mb-3">
             {item.tipo}
           </span>
           <h2 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">{item.titulo}</h2>
@@ -146,17 +147,18 @@ const Detalle = ({ item, onVolver }) => {
               <form onSubmit={deponerComentario} className="mb-8">
                 <textarea
                   rows="3"
+                  maxLength={MAX_CARACTERES}
                   value={nuevoComentario}
                   onChange={(e) => setNuevoComentario(e.target.value)}
                   placeholder="Escribe tu reseña u opinión sobre esta obra..."
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl p-4 text-base text-white focus:outline-none focus:border-[var(--accent)]/50 transition-all resize-none placeholder:text-zinc-600"
+                  className="w-full bg-zinc-900 border border-white/10 rounded-xl p-4 text-base text-white focus:outline-none focus:border-(--accent)/50 transition-all resize-none placeholder:text-zinc-600"
                 ></textarea>
 
                 <div className="flex justify-between items-center mt-1.5 px-1">
                   <span className={`text-[11px] font-mono ${textoValido ? 'text-emerald-500' : 'text-zinc-600'}`}>
-                    {textoValido
-                      ? `${caracteresActuales} caracteres`
-                      : `Necesitas ${faltanCaracteres} caracteres más (mínimo ${MIN_CARACTERES})`}
+                    {caracteresActuales < MIN_CARACTERES
+                      ? `Necesitas ${faltanCaracteres} caracteres más (mínimo ${MIN_CARACTERES})`
+                      : `${caracteresActuales} / ${MAX_CARACTERES} caracteres`}
                   </span>
                 </div>
 
@@ -169,7 +171,7 @@ const Detalle = ({ item, onVolver }) => {
                         ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
                         : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                     }`}
-                  >
+                    >
                     👍 Recomendada
                   </button>
                   <button
@@ -190,7 +192,7 @@ const Detalle = ({ item, onVolver }) => {
                 <button
                   type="submit"
                   disabled={enviando || !textoValido}
-                  className="mt-3 px-6 py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all self-end disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="mt-3 px-6 py-2.5 rounded-xl bg-(--accent) text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all self-end disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {enviando ? 'Publicando...' : 'Publicar Reseña'}
                 </button>
@@ -206,7 +208,7 @@ const Detalle = ({ item, onVolver }) => {
                 {comentarios.map((com) => (
                   <div key={com.id} className="bg-zinc-900/40 border border-white/5 rounded-xl p-4 transition-all">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-bold text-[var(--accent)] flex items-center gap-2">
+                      <span className="text-xs font-bold text-(--accent) flex items-center gap-2">
                         {com.perfiles?.username || 'Usuario'}
                         <span className={com.rating ? 'text-emerald-400' : 'text-rose-400'}>
                           {com.rating ? '👍' : '👎'}

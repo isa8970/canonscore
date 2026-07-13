@@ -4,12 +4,19 @@ import { supabase } from '../config/supabaseClient';
 const RegistroForm = ({ onExito }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
+
     setCargando(true);
 
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -35,7 +42,7 @@ const RegistroForm = ({ onExito }) => {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
-        className="bg-zinc-900 border border-white/10 rounded-xl p-3 text-base text-white focus:outline-none focus:border-[var(--accent)]/50"
+        className="bg-zinc-900 border border-white/10 rounded-xl p-3 text-base text-white focus:outline-none focus:border-(--accent)/50"
       />
       <input
         type="password"
@@ -44,7 +51,16 @@ const RegistroForm = ({ onExito }) => {
         onChange={(e) => setPassword(e.target.value)}
         required
         minLength={6}
-        className="bg-zinc-900 border border-white/10 rounded-xl p-3 text-base text-white focus:outline-none focus:border-[var(--accent)]/50"
+        className="bg-zinc-900 border border-white/10 rounded-xl p-3 text-base text-white focus:outline-none focus:border-(--accent)/50"
+      />
+      <input
+        type="password"
+        placeholder="Confirmar contraseña"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        required
+        minLength={6}
+        className="bg-zinc-900 border border-white/10 rounded-xl p-3 text-base text-white focus:outline-none focus:border-(--accent)/50"
       />
 
       {error && <p className="text-rose-400 text-xs">{error}</p>}
@@ -52,8 +68,7 @@ const RegistroForm = ({ onExito }) => {
       <button
         type="submit"
         disabled={cargando}
-        className="px-6 py-3 rounded-xl bg-[var(--accent)] text-white font-bold uppercase tracking-wider text-xs hover:brightness-110 transition-all disabled:opacity-50"
-      >
+        className="px-6 py-3 rounded-xl bg-(--accent) text-white font-bold uppercase tracking-wider text-xs hover:brightness-110 transition-all disabled:opacity-50">
         {cargando ? 'Creando cuenta...' : 'Registrarse'}
       </button>
     </form>

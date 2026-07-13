@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { CATEGORIAS_MAP } from '../constants/categorias';
+import AdminPanelModal from './AdminPanelModal';
 
 const Sidebar = ({
   categoriaActiva,
@@ -13,8 +14,9 @@ const Sidebar = ({
   onCerrar,
   onAbrirLogin,
 }) => {
-  const { usuario, perfil, cerrarSesion } = useAuth();
+  const { usuario, perfil, cerrarSesion, esAdmin } = useAuth();
   const categorias = Object.keys(CATEGORIAS_MAP);
+  const [mostrarAdmin, setMostrarAdmin] = useState(false);
 
   const seleccionarCategoria = (valorReal) => {
     volverAInicio();
@@ -38,14 +40,14 @@ const Sidebar = ({
       >
         <span
           style={{ fontSize: '1rem', lineHeight: 1.2 }}
-          className="block font-black tracking-tighter text-[var(--accent)] uppercase italic"
+          className="block font-black tracking-tighter text-(--accent) uppercase italic"
         >
           CanonScore
         </span>
       </div>
 
       {/* Categorías */}
-      <nav className="flex flex-col gap-1 flex-grow">
+      <nav className="flex flex-col gap-1 grow">
         <span className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
           Categorías
         </span>
@@ -58,7 +60,7 @@ const Sidebar = ({
               onClick={() => seleccionarCategoria(valorReal)}
               className={`text-left px-3 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${
                 activo
-                  ? 'bg-[var(--accent)]/15 text-[var(--accent)]'
+                  ? 'bg-(--accent)/15 text-(--accent)'
                   : 'text-zinc-400 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -80,6 +82,24 @@ const Sidebar = ({
           </svg>
           Mis Listas y Favoritos
         </button>
+
+        {/* Panel de administración: visible solo para el rol administrador */}
+        {esAdmin && (
+          <>
+            <span className="px-2 mt-6 mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+              Administración
+            </span>
+            <button
+              onClick={() => { setMostrarAdmin(true); onCerrar(); }}
+              className="text-left px-3 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide text-zinc-400 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M5 7h14M5 7a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2M5 7l1.5 12.5a2 2 0 002 1.5h7a2 2 0 002-1.5L19 7" />
+              </svg>
+              Panel de Administración
+            </button>
+          </>
+        )}
       </nav>
 
       {/* Sesión */}
@@ -90,7 +110,7 @@ const Sidebar = ({
               onClick={() => { irAPerfil(); onCerrar(); }}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all text-left"
             >
-              <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 flex items-center justify-center text-[var(--accent)] flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-(--accent)/10 border border-(--accent)/20 flex items-center justify-center text-(--accent) shrink-0">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
@@ -107,7 +127,7 @@ const Sidebar = ({
         ) : (
           <button
             onClick={() => { onAbrirLogin(); onCerrar(); }}
-            className="w-full px-4 py-2.5 rounded-xl bg-[var(--accent)] text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all"
+            className="w-full px-4 py-2.5 rounded-xl bg-(--accent) text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all"
           >
             Iniciar sesión
           </button>
@@ -119,20 +139,20 @@ const Sidebar = ({
   return (
     <>
       {/* Versión de escritorio: fija, siempre visible */}
-      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 bg-zinc-950 border-r border-white/5 p-6 z-40">
+      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 bg-zinc-950 border-r border-white/5 p-6 z-40 overflow-y-auto">
         {contenido}
       </aside>
 
       {/* Versión móvil: drawer que colapsa, montado con portal para evitar el bug de backdrop-blur */}
       {abierto && createPortal(
-        <div className="fixed inset-0 z-[110] lg:hidden">
+        <div className="fixed inset-0 z-110 lg:hidden">
           {/* Fondo oscuro */}
           <div
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={onCerrar}
           />
           {/* Panel deslizante */}
-          <aside className="absolute left-0 top-0 h-full w-72 bg-zinc-950 border-r border-white/10 p-6 flex flex-col shadow-2xl">
+          <aside className="absolute left-0 top-0 h-full w-72 bg-zinc-950 border-r border-white/10 p-6 flex flex-col shadow-2xl overflow-y-auto">
             <button
               onClick={onCerrar}
               className="absolute top-4 right-4 text-zinc-500 hover:text-white"
@@ -144,6 +164,8 @@ const Sidebar = ({
         </div>,
         document.body
       )}
+
+      {mostrarAdmin && <AdminPanelModal onCerrar={() => setMostrarAdmin(false)} />}
     </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Nav from './components/nav';
 import Banner from './components/banner';
 import Tarjeta from './components/Tarjeta';
@@ -60,8 +60,21 @@ function App() {
 
     loadData();
 
+    // Suscripción en tiempo real: cualquier cambio en la tabla `libreria`
+    // (insert, update o delete, venga de donde venga: el panel de admin,
+    // otro administrador, o el SQL Editor) vuelve a cargar el catálogo
+    // automáticamente. Así el buscador y los filtros por categoría/género
+    // siempre reflejan lo que hay en la base de datos, sin recargar la página.
+    const canal = supabase
+      .channel('libreria-cambios')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'libreria' }, () => {
+        loadData();
+      })
+      .subscribe();
+
     return () => {
       mounted = false;
+      supabase.removeChannel(canal);
     };
   }, []);
 
@@ -137,7 +150,7 @@ function App() {
   }, {});
 
   return (
-    <div className="w-full min-h-screen m-0 p-0 bg-neutral-950 selection:bg-[var(--accent)] selection:text-white text-[var(--text)] lg:pl-64">
+    <div className="w-full min-h-screen m-0 p-0 bg-neutral-950 selection:bg-(--accent) selection:text-white text-(--text) lg:pl-64">
       <Nav 
         setCategoriaActiva={setCategoriaActiva} 
         setTerminoBusqueda={setTerminoBusqueda}
@@ -158,14 +171,14 @@ function App() {
 
           {error && (
             <div className="pt-6">
-              <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm">
+              <div className="max-w-350 mx-auto px-6 md:px-12 py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm">
                 Error cargando datos: {error}
               </div>
             </div>
           )}
 
-          <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-12"> 
-            <h2 className="text-xl font-black tracking-widest uppercase mb-6 text-left border-l-4 border-[var(--accent)] pl-3">
+          <main className="max-w-350 mx-auto px-6 md:px-12 py-12"> 
+            <h2 className="text-xl font-black tracking-widest uppercase mb-6 text-left border-l-4 border-(--accent) pl-3">
               {categoriaActiva === 'Todas' ? 'Catálogo por Géneros' : (CATEGORIAS_DISPLAY[categoriaActiva] || categoriaActiva)}
             </h2>
 
@@ -177,8 +190,8 @@ function App() {
               Object.entries(genresMap).map(([genre, items]) => (
                 <section key={genre} className="mb-10">
                   <div className="flex items-center gap-4 mb-6">
-                    <h3 className="text-lg font-black uppercase tracking-widest text-[var(--text)]">{genre}</h3>
-                    <div className="h-[1px] flex-grow bg-gradient-to-r from-[var(--accent)]/30 to-transparent" />
+                    <h3 className="text-lg font-black uppercase tracking-widest text-(--text)">{genre}</h3>
+                    <div className="h-px grow bg-linear-to-r from-(--accent)/30 to-transparent" />
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                     {items.map((item) => (
