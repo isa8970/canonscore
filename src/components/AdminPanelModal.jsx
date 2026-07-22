@@ -16,7 +16,6 @@ const FORM_VACIO = {
   sinopsis: '',
   cover: '',
   banner: '',
-  trailer: '',
   generos: '', // texto separado por comas, se convierte a array al guardar
 };
 
@@ -74,7 +73,6 @@ const AdminPanelModal = ({ onCerrar }) => {
       sinopsis: item.sinopsis || '',
       cover: item.cover || '',
       banner: item.banner || '',
-      trailer: item.trailer || '',
       generos: Array.isArray(item.generos) ? item.generos.join(', ') : '',
     });
     setError(null);
@@ -127,7 +125,6 @@ const AdminPanelModal = ({ onCerrar }) => {
       sinopsis: form.sinopsis.trim() || null,
       cover: form.cover.trim(),
       banner: form.banner.trim() || null,
-      trailer: form.trailer.trim() || null,
       generos: generosLimpios,
     };
 
@@ -289,7 +286,7 @@ const AdminPanelModal = ({ onCerrar }) => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">URL portada (cover) *</label>
                   <input
@@ -311,16 +308,7 @@ const AdminPanelModal = ({ onCerrar }) => {
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-base text-white focus:outline-none focus:border-(--accent)/50 placeholder:text-zinc-600"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">URL tráiler</label>
-                  <input
-                    type="url"
-                    value={form.trailer}
-                    onChange={(e) => setForm({ ...form, trailer: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-base text-white focus:outline-none focus:border-(--accent)/50 placeholder:text-zinc-600"
-                  />
-                </div>
+                
               </div>
 
               {error && <p className="text-rose-400 text-xs">{error}</p>}
