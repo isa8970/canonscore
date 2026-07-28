@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useAuth } from '../context/AuthContext';
-import { CATEGORIAS_MAP } from '../constants/categorias';
-import AdminPanelModal from './AdminPanelModal';
+import React, {
+  useState,
+} from "react";
+
+import { createPortal } from "react-dom";
+import { useAuth } from "../context/AuthContext";
+import { CATEGORIAS_MAP } from "../constants/categorias";
+import AdminPanelModal from "./AdminPanelModal";
 
 const Sidebar = ({
   categoriaActiva,
@@ -10,124 +13,244 @@ const Sidebar = ({
   volverAInicio,
   irAPerfil,
   irAListas,
-  abierto,
-  onCerrar,
-  onAbrirLogin,
+  abierto = false,
+  onCerrar = () => {},
+  onAbrirLogin = () => {},
 }) => {
-  const { usuario, perfil, cerrarSesion, esAdmin } = useAuth();
-  const categorias = Object.keys(CATEGORIAS_MAP);
-  const [mostrarAdmin, setMostrarAdmin] = useState(false);
+  const {
+    usuario,
+    perfil,
+    cerrarSesion,
+    esAdmin,
+  } = useAuth();
 
-  const seleccionarCategoria = (valorReal) => {
+  const categorias =
+    Object.keys(
+      CATEGORIAS_MAP,
+    );
+
+  const [
+    mostrarAdmin,
+    setMostrarAdmin,
+  ] = useState(false);
+
+  const seleccionarCategoria = (
+    valorReal,
+  ) => {
     volverAInicio();
-    setCategoriaActiva(valorReal);
-    onCerrar(); // cierra el drawer en móvil después de elegir
-  };
-
-  const handleCerrarSesion = async () => {
-    await cerrarSesion();
+    setCategoriaActiva(
+      valorReal,
+    );
     onCerrar();
-    volverAInicio();
   };
 
-  // Contenido compartido entre la versión de escritorio (fija) y la de móvil (drawer)
+  const handleCerrarSesion =
+    async () => {
+      await cerrarSesion();
+
+      onCerrar();
+      volverAInicio();
+    };
+
+  const abrirInicio = () => {
+    volverAInicio();
+
+    setCategoriaActiva(
+      "Todas",
+    );
+
+    onCerrar();
+  };
+
+  const abrirListas = () => {
+    irAListas();
+    onCerrar();
+  };
+
+  const abrirPerfil = () => {
+    irAPerfil();
+    onCerrar();
+  };
+
+  const abrirAdministracion =
+    () => {
+      setMostrarAdmin(true);
+      onCerrar();
+    };
+
   const contenido = (
     <>
-      {/* Logo */}
-      <div
-        onClick={() => { volverAInicio(); setCategoriaActiva('Todas'); onCerrar(); }}
-        className="cursor-pointer mb-8 px-2"
+      <button
+        type="button"
+        onClick={abrirInicio}
+        className="mb-8 cursor-pointer px-2 text-left"
       >
         <span
-          style={{ fontSize: '1rem', lineHeight: 1.2 }}
-          className="block font-black tracking-tighter text-(--accent) uppercase italic"
+          style={{
+            fontSize: "1rem",
+            lineHeight: 1.2,
+          }}
+          className="block font-black uppercase italic tracking-tighter text-(--accent)"
         >
           CanonScore
         </span>
-      </div>
+      </button>
 
-      {/* Categorías */}
-      <nav className="flex flex-col gap-1 grow">
-        <span className="px-2 mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+      <nav className="flex grow flex-col gap-1">
+        <span className="mb-2 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
           Categorías
         </span>
-        {categorias.map((cat) => {
-          const valorReal = CATEGORIAS_MAP[cat];
-          const activo = categoriaActiva === valorReal;
-          return (
-            <button
-              key={cat}
-              onClick={() => seleccionarCategoria(valorReal)}
-              className={`text-left px-3 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${
-                activo
-                  ? 'bg-(--accent)/15 text-(--accent)'
-                  : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              {cat}
-            </button>
-          );
-        })}
 
-        {/* Listas y favoritos */}
-        <span className="px-2 mt-6 mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+        {categorias.map(
+          (categoria) => {
+            const valorReal =
+              CATEGORIAS_MAP[
+                categoria
+              ];
+
+            const activo =
+              categoriaActiva ===
+              valorReal;
+
+            return (
+              <button
+                key={categoria}
+                type="button"
+                onClick={() =>
+                  seleccionarCategoria(
+                    valorReal,
+                  )
+                }
+                className={`rounded-xl px-3 py-2.5 text-left text-sm font-bold uppercase tracking-wide transition-all ${
+                  activo
+                    ? "bg-(--accent)/15 text-(--accent)"
+                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                {categoria}
+              </button>
+            );
+          },
+        )}
+
+        <span className="mb-2 mt-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
           Tu biblioteca
         </span>
+
         <button
-          onClick={() => { irAListas(); onCerrar(); }}
-          className="text-left px-3 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide text-zinc-400 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"
+          type="button"
+          onClick={abrirListas}
+          className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold uppercase tracking-wide text-zinc-400 transition-all hover:bg-white/5 hover:text-white"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          <svg
+            className="h-4 w-4 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+            />
           </svg>
+
           Mis Listas y Favoritos
         </button>
 
-        {/* Panel de administración: visible solo para el rol administrador */}
         {esAdmin && (
           <>
-            <span className="px-2 mt-6 mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
+            <span className="mb-2 mt-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-600">
               Administración
             </span>
+
             <button
-              onClick={() => { setMostrarAdmin(true); onCerrar(); }}
-              className="text-left px-3 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide text-zinc-400 hover:bg-white/5 hover:text-white transition-all flex items-center gap-2"
+              type="button"
+              onClick={
+                abrirAdministracion
+              }
+              className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold uppercase tracking-wide text-zinc-400 transition-all hover:bg-white/5 hover:text-white"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M5 7h14M5 7a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2M5 7l1.5 12.5a2 2 0 002 1.5h7a2 2 0 002-1.5L19 7" />
+              <svg
+                className="h-4 w-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 3v2m6-2v2M5 7h14M5 7a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2M5 7l1.5 12.5a2 2 0 002 1.5h7a2 2 0 002-1.5L19 7"
+                />
               </svg>
+
               Panel de Administración
             </button>
           </>
         )}
       </nav>
 
-      {/* Sesión */}
-      <div className="mt-auto pt-6 border-t border-white/5">
+      <div className="mt-auto border-t border-white/5 pt-6">
         {usuario ? (
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => { irAPerfil(); onCerrar(); }}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all text-left"
+              type="button"
+              onClick={abrirPerfil}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all hover:bg-white/5"
             >
-              <div className="w-8 h-8 rounded-full bg-(--accent)/10 border border-(--accent)/20 flex items-center justify-center text-(--accent) shrink-0">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-(--accent)/20 bg-(--accent)/10 text-(--accent)">
+                {perfil?.pfp ? (
+                  <img
+                    src={perfil.pfp}
+                    alt={
+                      perfil.username ||
+                      "Perfil"
+                    }
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                )}
               </div>
-              <span className="text-sm font-bold text-white truncate">{perfil?.username || 'Mi perfil'}</span>
+
+              <span className="truncate text-sm font-bold text-white">
+                {perfil?.username ||
+                  "Mi perfil"}
+              </span>
             </button>
+
             <button
-              onClick={handleCerrarSesion}
-              className="px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-500/10 transition-all text-left"
+              type="button"
+              onClick={
+                handleCerrarSesion
+              }
+              className="rounded-xl px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-rose-400 transition-all hover:bg-rose-500/10"
             >
               Cerrar sesión
             </button>
           </div>
         ) : (
           <button
-            onClick={() => { onAbrirLogin(); onCerrar(); }}
-            className="w-full px-4 py-2.5 rounded-xl bg-(--accent) text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all"
+            type="button"
+            onClick={() => {
+              onAbrirLogin();
+              onCerrar();
+            }}
+            className="w-full rounded-xl bg-(--accent) px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:brightness-110"
           >
             Iniciar sesión
           </button>
@@ -138,34 +261,50 @@ const Sidebar = ({
 
   return (
     <>
-      {/* Versión de escritorio: fija, siempre visible */}
-      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 bg-zinc-950 border-r border-white/5 p-6 z-40 overflow-y-auto">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col overflow-y-auto border-r border-white/5 bg-zinc-950 p-6 lg:flex">
         {contenido}
       </aside>
 
-      {/* Versión móvil: drawer que colapsa, montado con portal para evitar el bug de backdrop-blur */}
-      {abierto && createPortal(
-        <div className="fixed inset-0 z-110 lg:hidden">
-          {/* Fondo oscuro */}
+      {abierto &&
+        createPortal(
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={onCerrar}
-          />
-          {/* Panel deslizante */}
-          <aside className="absolute left-0 top-0 h-full w-72 bg-zinc-950 border-r border-white/10 p-6 flex flex-col shadow-2xl overflow-y-auto">
+            className="fixed inset-0 lg:hidden"
+            style={{
+              zIndex: 1000,
+              isolation:
+                "isolate",
+            }}
+          >
             <button
+              type="button"
               onClick={onCerrar}
-              className="absolute top-4 right-4 text-zinc-500 hover:text-white"
-            >
-              ✕
-            </button>
-            {contenido}
-          </aside>
-        </div>,
-        document.body
-      )}
+              className="absolute inset-0 h-full w-full bg-black/70 backdrop-blur-sm"
+              aria-label="Cerrar menú"
+            />
 
-      {mostrarAdmin && <AdminPanelModal onCerrar={() => setMostrarAdmin(false)} />}
+            <aside className="absolute left-0 top-0 flex h-full w-72 flex-col overflow-y-auto border-r border-white/10 bg-zinc-950 p-6 shadow-2xl">
+              <button
+                type="button"
+                onClick={onCerrar}
+                className="absolute right-4 top-4 text-zinc-500 transition-colors hover:text-white"
+                aria-label="Cerrar menú"
+              >
+                ✕
+              </button>
+
+              {contenido}
+            </aside>
+          </div>,
+          document.body,
+        )}
+
+      {mostrarAdmin && (
+        <AdminPanelModal
+          onCerrar={() =>
+            setMostrarAdmin(false)
+          }
+        />
+      )}
     </>
   );
 };

@@ -1,42 +1,66 @@
 import React, { useState } from "react";
+
 import AuthModal from "./AuthModal";
 import Sidebar from "./Sidebar";
-import { useAuth } from "../context/AuthContext";
 import FiltrosModal from "./FiltrosModal";
+import NotificacionesReportes from "./NotificacionesReportes";
+
+import { useAuth } from "../context/AuthContext";
 
 const Nav = ({
   setCategoriaActiva,
   setTerminoBusqueda,
-  terminoBusqueda,
+  terminoBusqueda = "",
   volverAInicio,
   categoriaActiva,
   irAPerfil,
   irAListas,
-  generosDisponibles,
-  filtros,
-  onAplicarFiltros,
+  generosDisponibles = [],
+  filtros = {
+    generos: [],
+    orden: "catalogo",
+  },
+  onAplicarFiltros = () => {},
 }) => {
-  const [mostrarLogin, setMostrarLogin] = useState(false);
-  const [sidebarAbierto, setSidebarAbierto] = useState(false);
-  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [mostrarLogin, setMostrarLogin] =
+    useState(false);
+
+  const [sidebarAbierto, setSidebarAbierto] =
+    useState(false);
+
+  const [mostrarFiltros, setMostrarFiltros] =
+    useState(false);
+
+  const { usuario, perfil } = useAuth();
+
+  const generosActivos =
+    Array.isArray(filtros?.generos)
+      ? filtros.generos
+      : [];
 
   const cantidadFiltrosActivos =
-    filtros.generos.length + (filtros.orden === "recomendacion" ? 1 : 0);
-  const { usuario, perfil } = useAuth();
+    generosActivos.length +
+    (filtros?.orden === "recomendacion"
+      ? 1
+      : 0);
 
   return (
     <>
-      <nav className="sticky top-0 z-50 w-full bg-zinc-950/80 backdrop-blur-md border-b border-white/5 py-1">
-        <div className="max-w-350 mx-auto px-4 md:px-12 flex items-center justify-between gap-4">
-          {/* Botón de menú (solo móvil) + Logo (solo móvil, ya que en desktop el logo vive en el Sidebar) */}
+      <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-zinc-950/80 py-1 backdrop-blur-md">
+        <div className="mx-auto flex max-w-350 items-center justify-between gap-4 px-4 md:px-12">
+          {/* MENÚ Y LOGO EN MÓVIL */}
+
           <div className="flex items-center gap-3 lg:hidden">
             <button
-              onClick={() => setSidebarAbierto(true)}
-              className="p-2 rounded-xl text-(--text) hover:bg-white/5 transition-all"
+              type="button"
+              onClick={() =>
+                setSidebarAbierto(true)
+              }
+              className="rounded-xl p-2 text-(--text) transition-all hover:bg-white/5"
               aria-label="Abrir menú"
             >
               <svg
-                className="w-6 h-6"
+                className="h-6 w-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -49,24 +73,27 @@ const Nav = ({
                 />
               </svg>
             </button>
+
             <h1
               onClick={() => {
                 volverAInicio();
                 setCategoriaActiva("Todas");
               }}
-              className="text-lg font-black tracking-tighter text-(--accent) uppercase italic cursor-pointer"
+              className="cursor-pointer text-lg font-black uppercase italic tracking-tighter text-(--accent)"
             >
               CanonScore
             </h1>
           </div>
 
-          {/* Filtros y búsqueda */}
-          <div className="flex items-center grow justify-end gap-3">
-            {/* Botón de filtros */}
+          {/* FILTROS, BUSCADOR Y NOTIFICACIONES */}
+
+          <div className="flex grow items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => setMostrarFiltros(true)}
-              className={`relative flex h-7 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-bold uppercase tracking-wider transition-all ${
+              onClick={() =>
+                setMostrarFiltros(true)
+              }
+              className={`relative flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-bold uppercase tracking-wider transition-all ${
                 cantidadFiltrosActivos > 0
                   ? "border-(--accent)/40 bg-(--accent)/15 text-(--accent)"
                   : "border-white/10 bg-zinc-900 text-zinc-400 hover:border-white/20 hover:text-white"
@@ -87,7 +114,9 @@ const Nav = ({
                 />
               </svg>
 
-              <span className="hidden sm:inline">Filtros</span>
+              <span className="hidden sm:inline">
+                Filtros
+              </span>
 
               {cantidadFiltrosActivos > 0 && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-(--accent) px-1 text-[10px] font-black text-white">
@@ -96,7 +125,6 @@ const Nav = ({
               )}
             </button>
 
-            {/* Buscador */}
             <div className="relative hidden w-full max-w-sm md:block">
               <input
                 type="text"
@@ -104,13 +132,16 @@ const Nav = ({
                 placeholder="Buscar películas, series, libros..."
                 onChange={(event) => {
                   volverAInicio();
-                  setTerminoBusqueda(event.target.value);
+
+                  setTerminoBusqueda(
+                    event.target.value,
+                  );
                 }}
-                className="w-full rounded-full border border-white/5 bg-zinc-900 py-1.5 pl-11 pr-4 text-xs text-(--text) placeholder:text-(--text) placeholder:opacity-30 transition-all focus:border-(--accent)/50 focus:outline-none focus:ring-1 focus:ring-(--accent)/50"
+                className="w-full rounded-full border border-white/5 bg-zinc-900 py-2 pl-11 pr-4 text-xs text-(--text) placeholder:text-(--text) placeholder:opacity-30 transition-all focus:border-(--accent)/50 focus:outline-none focus:ring-1 focus:ring-(--accent)/50"
               />
 
               <svg
-                className="absolute left-4 top-2 h-4 w-4 text-(--text) opacity-30"
+                className="absolute left-4 top-2.5 h-4 w-4 text-(--text) opacity-30"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -124,56 +155,48 @@ const Nav = ({
               </svg>
             </div>
 
-            {/* Botones de notificación y perfil */}
-            <div className="flex items-center gap-3">
-              <button className="p-2 rounded-full text-(--text) opacity-60 hover:opacity-100 hover:bg-white/5 transition-all relative">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
-                <span className="absolute top-2 right-2 w-2 h-2 bg-(--accent) rounded-full border-2 border-zinc-950"></span>
-              </button>
+            {/* Solo aparece para administradores */}
 
-              {/* Solo en móvil: en desktop el acceso a perfil/login ya vive en el Sidebar */}
-              <div className="lg:hidden">
-                {usuario ? (
-                  <button
-                    onClick={irAPerfil}
-                    className="w-9 h-9 rounded-full bg-(--accent)/10 border border-(--accent)/20 flex items-center justify-center text-(--accent) hover:bg-(--accent)/20 transition-all"
-                    title={perfil?.username || "Mi perfil"}
+            <NotificacionesReportes />
+
+            {/* PERFIL O LOGIN EN MÓVIL */}
+
+            <div className="lg:hidden">
+              {usuario ? (
+                <button
+                  type="button"
+                  onClick={irAPerfil}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-(--accent)/20 bg-(--accent)/10 text-(--accent) transition-all hover:bg-(--accent)/20"
+                  title={
+                    perfil?.username ||
+                    "Mi perfil"
+                  }
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setMostrarLogin(true)}
-                    className="px-4 py-1.5 rounded-full bg-(--accent) text-white text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all"
-                  >
-                    Entrar
-                  </button>
-                )}
-              </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMostrarLogin(true)
+                  }
+                  className="rounded-full bg-(--accent) px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:brightness-110"
+                >
+                  Entrar
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -186,21 +209,43 @@ const Nav = ({
         irAPerfil={irAPerfil}
         irAListas={irAListas}
         abierto={sidebarAbierto}
-        onCerrar={() => setSidebarAbierto(false)}
-        onAbrirLogin={() => setMostrarLogin(true)}
+        onCerrar={() =>
+          setSidebarAbierto(false)
+        }
+        onAbrirLogin={() =>
+          setMostrarLogin(true)
+        }
       />
 
-      {mostrarLogin && <AuthModal onCerrar={() => setMostrarLogin(false)} />}
+      {mostrarLogin && (
+        <AuthModal
+          onCerrar={() =>
+            setMostrarLogin(false)
+          }
+        />
+      )}
 
       {mostrarFiltros && (
         <FiltrosModal
-          generosDisponibles={generosDisponibles}
-          filtrosActuales={filtros}
+          generosDisponibles={
+            generosDisponibles || []
+          }
+          filtrosActuales={
+            filtros || {
+              generos: [],
+              orden: "catalogo",
+            }
+          }
           onAplicar={(nuevosFiltros) => {
             volverAInicio();
-            onAplicarFiltros(nuevosFiltros);
+
+            onAplicarFiltros(
+              nuevosFiltros,
+            );
           }}
-          onCerrar={() => setMostrarFiltros(false)}
+          onCerrar={() =>
+            setMostrarFiltros(false)
+          }
         />
       )}
     </>
