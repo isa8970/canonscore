@@ -1,48 +1,29 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
 import { supabase } from "../config/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import ModalPortal from "./ModalPortal";
+import AgregarAListaModal from "./AgregarAListaModal";
 
 import iconoBuena from "/premio.png";
 import iconoMala from "/bandera.png";
+import favoritoVacio from "/Favoritos-vacio.png";
+import favoritoLleno from "/Favoritos-lleno.png";
+import guardarVacio from "/Guardar-vacio.png";
+import guardarLleno from "/Guardar-lleno.png";
 
 const MIN_CARACTERES = 15;
 const MAX_CARACTERES = 1000;
 const MAX_DETALLES_REPORTE = 500;
+const NOMBRE_FAVORITOS = "Favoritos";
 
 const MOTIVOS_REPORTE = [
-  {
-    value: "spam",
-    label: "Spam o publicidad",
-  },
-  {
-    value: "lenguaje_ofensivo",
-    label: "Lenguaje ofensivo",
-  },
-  {
-    value: "acoso",
-    label:
-      "Acoso o ataque personal",
-  },
-  {
-    value: "spoiler",
-    label:
-      "Spoiler sin advertencia",
-  },
-  {
-    value:
-      "contenido_inapropiado",
-    label:
-      "Contenido inapropiado",
-  },
-  {
-    value: "otro",
-    label: "Otro motivo",
-  },
+  { value: "spam", label: "Spam o publicidad" },
+  { value: "lenguaje_ofensivo", label: "Lenguaje ofensivo" },
+  { value: "acoso", label: "Acoso o ataque personal" },
+  { value: "spoiler", label: "Spoiler sin advertencia" },
+  { value: "contenido_inapropiado", label: "Contenido inapropiado" },
+  { value: "otro", label: "Otro motivo" },
 ];
 
 const ETIQUETAS_TIPO_ENLACE = {
@@ -50,112 +31,56 @@ const ETIQUETAS_TIPO_ENLACE = {
   tienda: "Tienda en línea",
   oficial: "Sitio oficial",
   editorial: "Editorial",
-  independiente:
-    "Sitio independiente",
+  independiente: "Sitio independiente",
   otro: "Enlace externo",
 };
 
-const ReportarReseniaModal = ({
-  resenia,
-  onCerrar,
-  onReportado,
-}) => {
+const ReportarReseniaModal = ({ resenia, onCerrar, onReportado }) => {
   const { usuario } = useAuth();
+  const [motivo, setMotivo] = useState("spam");
+  const [detalles, setDetalles] = useState("");
+  const [enviandoReporte, setEnviandoReporte] = useState(false);
+  const [errorReporte, setErrorReporte] = useState(null);
 
-  const [motivo, setMotivo] =
-    useState("spam");
-
-  const [detalles, setDetalles] =
-    useState("");
-
-  const [
-    enviandoReporte,
-    setEnviandoReporte,
-  ] = useState(false);
-
-  const [
-    errorReporte,
-    setErrorReporte,
-  ] = useState(null);
-
-  const enviarReporte = async (
-    evento,
-  ) => {
+  const enviarReporte = async (evento) => {
     evento.preventDefault();
 
     if (!usuario) {
-      setErrorReporte(
-        "Debes iniciar sesión para reportar una reseña.",
-      );
-
+      setErrorReporte("Debes iniciar sesión para reportar una reseña.");
       return;
     }
 
     if (!resenia) {
-      setErrorReporte(
-        "No se encontró la reseña.",
-      );
-
+      setErrorReporte("No se encontró la reseña.");
       return;
     }
 
-    if (
-      resenia.user_id ===
-      usuario.id
-    ) {
-      setErrorReporte(
-        "No puedes reportar tu propia reseña.",
-      );
-
+    if (resenia.user_id === usuario.id) {
+      setErrorReporte("No puedes reportar tu propia reseña.");
       return;
     }
 
     setEnviandoReporte(true);
     setErrorReporte(null);
 
-    const { error } =
-      await supabase
-        .from(
-          "reportes_resenias",
-        )
-        .insert({
-          resenia_id:
-            resenia.id,
-
-          reportante_id:
-            usuario.id,
-
-          motivo,
-
-          detalles:
-            detalles.trim() ||
-            null,
-        });
+    const { error } = await supabase.from("reportes_resenias").insert({
+      resenia_id: resenia.id,
+      reportante_id: usuario.id,
+      motivo,
+      detalles: detalles.trim() || null,
+    });
 
     setEnviandoReporte(false);
 
     if (error) {
-      console.error(
-        "Error enviando reporte:",
-        error,
-      );
+      console.error("Error enviando reporte:", error);
 
-      if (
-        error.code === "23505"
-      ) {
-        setErrorReporte(
-          "Ya reportaste esta reseña anteriormente.",
-        );
-      } else if (
-        error.code === "42501"
-      ) {
-        setErrorReporte(
-          "No tienes permiso para reportar esta reseña.",
-        );
+      if (error.code === "23505") {
+        setErrorReporte("Ya reportaste esta reseña anteriormente.");
+      } else if (error.code === "42501") {
+        setErrorReporte("No tienes permiso para reportar esta reseña.");
       } else {
-        setErrorReporte(
-          "No se pudo enviar el reporte. Intenta nuevamente.",
-        );
+        setErrorReporte("No se pudo enviar el reporte. Intenta nuevamente.");
       }
 
       return;
@@ -167,16 +92,12 @@ const ReportarReseniaModal = ({
   if (!resenia) return null;
 
   return (
-    <ModalPortal
-      onCerrar={onCerrar}
-    >
+    <ModalPortal onCerrar={onCerrar}>
       <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
         <button
           type="button"
           onClick={onCerrar}
-          disabled={
-            enviandoReporte
-          }
+          disabled={enviandoReporte}
           className="absolute right-4 top-4 text-zinc-500 transition-colors hover:text-white disabled:opacity-40"
           aria-label="Cerrar modal"
         >
@@ -188,44 +109,27 @@ const ReportarReseniaModal = ({
         </h2>
 
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          El reporte será enviado a
-          los administradores para su
-          revisión. La reseña no se
-          eliminará automáticamente.
+          El reporte será enviado a los administradores para su revisión. La
+          reseña no se eliminará automáticamente.
         </p>
 
         <div className="mt-4 max-h-32 overflow-y-auto rounded-xl border border-white/5 bg-zinc-900/50 p-4">
           <div className="mb-2 flex items-center gap-2">
             <img
-              src={
-                resenia.rating
-                  ? iconoBuena
-                  : iconoMala
-              }
-              alt={
-                resenia.rating
-                  ? "Valoración buena"
-                  : "Valoración mala"
-              }
+              src={resenia.rating ? iconoBuena : iconoMala}
+              alt={resenia.rating ? "Valoración buena" : "Valoración mala"}
               className="h-6 w-6 object-contain"
             />
-
             <span className="text-xs font-bold text-(--accent)">
-              {resenia.perfiles
-                ?.username ||
-                "Usuario"}
+              {resenia.perfiles?.username || "Usuario"}
             </span>
           </div>
-
           <p className="text-xs leading-relaxed text-zinc-300">
             “{resenia.review_text}”
           </p>
         </div>
 
-        <form
-          onSubmit={enviarReporte}
-          className="mt-5 flex flex-col gap-4"
-        >
+        <form onSubmit={enviarReporte} className="mt-5 flex flex-col gap-4">
           <div>
             <label
               htmlFor="motivo-reporte"
@@ -233,35 +137,18 @@ const ReportarReseniaModal = ({
             >
               Motivo
             </label>
-
             <select
               id="motivo-reporte"
               value={motivo}
-              onChange={(evento) =>
-                setMotivo(
-                  evento.target
-                    .value,
-                )
-              }
-              disabled={
-                enviandoReporte
-              }
+              onChange={(evento) => setMotivo(evento.target.value)}
+              disabled={enviandoReporte}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white outline-none focus:border-amber-500/50 disabled:opacity-50"
             >
-              {MOTIVOS_REPORTE.map(
-                (opcion) => (
-                  <option
-                    key={
-                      opcion.value
-                    }
-                    value={
-                      opcion.value
-                    }
-                  >
-                    {opcion.label}
-                  </option>
-                ),
-              )}
+              {MOTIVOS_REPORTE.map((opcion) => (
+                <option key={opcion.value} value={opcion.value}>
+                  {opcion.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -273,31 +160,17 @@ const ReportarReseniaModal = ({
               >
                 Detalles opcionales
               </label>
-
               <span className="text-[10px] font-mono text-zinc-600">
-                {detalles.length} /{" "}
-                {
-                  MAX_DETALLES_REPORTE
-                }
+                {detalles.length} / {MAX_DETALLES_REPORTE}
               </span>
             </div>
-
             <textarea
               id="detalles-reporte"
               rows="4"
-              maxLength={
-                MAX_DETALLES_REPORTE
-              }
+              maxLength={MAX_DETALLES_REPORTE}
               value={detalles}
-              onChange={(evento) =>
-                setDetalles(
-                  evento.target
-                    .value,
-                )
-              }
-              disabled={
-                enviandoReporte
-              }
+              onChange={(evento) => setDetalles(evento.target.value)}
+              disabled={enviandoReporte}
               placeholder="Explica brevemente por qué reportas esta reseña..."
               className="w-full resize-none rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-amber-500/50 disabled:opacity-50"
             />
@@ -313,24 +186,17 @@ const ReportarReseniaModal = ({
             <button
               type="button"
               onClick={onCerrar}
-              disabled={
-                enviandoReporte
-              }
+              disabled={enviandoReporte}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 hover:bg-white/10 disabled:opacity-40"
             >
               Cancelar
             </button>
-
             <button
               type="submit"
-              disabled={
-                enviandoReporte
-              }
+              disabled={enviandoReporte}
               className="rounded-xl border border-amber-500/30 bg-amber-500/15 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
             >
-              {enviandoReporte
-                ? "Enviando..."
-                : "Enviar reporte"}
+              {enviandoReporte ? "Enviando..." : "Enviar reporte"}
             </button>
           </div>
         </form>
@@ -339,131 +205,66 @@ const ReportarReseniaModal = ({
   );
 };
 
-const Detalle = ({
-  item,
-  onVolver,
-}) => {
-  const {
-    usuario,
-    esInvitado,
-  } = useAuth();
+const Detalle = ({ item, onVolver, onVerPerfil }) => {
+  const { usuario, esInvitado } = useAuth();
 
-  const [
-    comentarios,
-    setComentarios,
-  ] = useState([]);
+  const [comentarios, setComentarios] = useState([]);
+  const [cargandoComentarios, setCargandoComentarios] = useState(true);
+  const [disponibilidades, setDisponibilidades] = useState([]);
+  const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(true);
+  const [errorDisponibilidad, setErrorDisponibilidad] = useState(null);
+  const [nuevoComentario, setNuevoComentario] = useState("");
+  const [ratingPositivo, setRatingPositivo] = useState(true);
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState(null);
+  const [reseniaProcesando, setReseniaProcesando] = useState(null);
+  const [reseniaAReportar, setReseniaAReportar] = useState(null);
+  const [mensajeAccion, setMensajeAccion] = useState(null);
 
-  const [
-    cargandoComentarios,
-    setCargandoComentarios,
-  ] = useState(true);
-
-  const [
-    disponibilidades,
-    setDisponibilidades,
-  ] = useState([]);
-
-  const [
-    cargandoDisponibilidad,
-    setCargandoDisponibilidad,
-  ] = useState(true);
-
-  const [
-    errorDisponibilidad,
-    setErrorDisponibilidad,
-  ] = useState(null);
-
-  const [
-    nuevoComentario,
-    setNuevoComentario,
-  ] = useState("");
-
-  const [
-    ratingPositivo,
-    setRatingPositivo,
-  ] = useState(true);
-
-  const [
-    enviando,
-    setEnviando,
-  ] = useState(false);
-
-  const [
-    errorEnvio,
-    setErrorEnvio,
-  ] = useState(null);
-
-  const [
-    reseniaProcesando,
-    setReseniaProcesando,
-  ] = useState(null);
-
-  const [
-    reseniaAReportar,
-    setReseniaAReportar,
-  ] = useState(null);
-
-  const [
-    mensajeAccion,
-    setMensajeAccion,
-  ] = useState(null);
+  const [esFavorito, setEsFavorito] = useState(false);
+  const [estaEnListaPersonalizada, setEstaEnListaPersonalizada] =
+    useState(false);
+  const [cargandoGuardados, setCargandoGuardados] = useState(false);
+  const [procesandoFavorito, setProcesandoFavorito] = useState(false);
+  const [mostrarModalListas, setMostrarModalListas] = useState(false);
+  const [versionGuardados, setVersionGuardados] = useState(0);
 
   useEffect(() => {
-    if (!item?.id) {
-      return undefined;
-    }
+    if (!item?.id) return undefined;
 
     let activo = true;
 
-    const cargarResenias =
-      async () => {
-        setCargandoComentarios(
-          true,
-        );
+    const cargarResenias = async () => {
+      setCargandoComentarios(true);
 
-        const {
-          data,
-          error,
-        } = await supabase
-          .from("resenias")
-          .select(`
-            id,
-            libreria_id,
-            user_id,
-            rating,
-            review_text,
-            created_at,
-            perfiles (
-              username
-            )
-          `)
-          .eq(
-            "libreria_id",
-            item.id,
+      const { data, error } = await supabase
+        .from("resenias")
+        .select(`
+          id,
+          libreria_id,
+          user_id,
+          rating,
+          review_text,
+          created_at,
+          perfiles (
+            username,
+            pfp
           )
-          .order("created_at", {
-            ascending: false,
-          });
+        `)
+        .eq("libreria_id", item.id)
+        .order("created_at", { ascending: false });
 
-        if (!activo) return;
+      if (!activo) return;
 
-        if (error) {
-          console.error(
-            "Error cargando reseñas:",
-            error,
-          );
+      if (error) {
+        console.error("Error cargando reseñas:", error);
+        setComentarios([]);
+      } else {
+        setComentarios(data || []);
+      }
 
-          setComentarios([]);
-        } else {
-          setComentarios(
-            data || [],
-          );
-        }
-
-        setCargandoComentarios(
-          false,
-        );
-      };
+      setCargandoComentarios(false);
+    };
 
     cargarResenias();
 
@@ -473,91 +274,48 @@ const Detalle = ({
   }, [item?.id]);
 
   useEffect(() => {
-    if (!item?.id) {
-      return undefined;
-    }
+    if (!item?.id) return undefined;
 
     let activo = true;
 
-    const cargarDisponibilidad =
-      async () => {
-        setCargandoDisponibilidad(
-          true,
-        );
+    const cargarDisponibilidad = async () => {
+      setCargandoDisponibilidad(true);
+      setErrorDisponibilidad(null);
 
-        setErrorDisponibilidad(
-          null,
-        );
-
-        const {
-          data,
-          error,
-        } = await supabase
-          .from(
-            "disponibilidad_streaming",
-          )
-          .select(`
+      const { data, error } = await supabase
+        .from("disponibilidad_streaming")
+        .select(`
+          id,
+          plataforma_id,
+          nombre_personalizado,
+          url_directo,
+          plataforma:plataformas (
             id,
-            plataforma_id,
-            nombre_personalizado,
-            url_directo,
-            plataforma:plataformas (
-              id,
-              nombre,
-              tipo
-            )
-          `)
-          .eq(
-            "libreria_id",
-            item.id,
-          );
+            nombre,
+            tipo
+          )
+        `)
+        .eq("libreria_id", item.id);
 
-        if (!activo) return;
+      if (!activo) return;
 
-        if (error) {
-          console.error(
-            "Error cargando enlaces:",
-            error,
-          );
+      if (error) {
+        console.error("Error cargando enlaces:", error);
+        setDisponibilidades([]);
+        setErrorDisponibilidad("No se pudieron cargar los enlaces.");
+      } else {
+        const ordenadas = [...(data || [])].sort((a, b) => {
+          const nombreA =
+            a.nombre_personalizado || a.plataforma?.nombre || "";
+          const nombreB =
+            b.nombre_personalizado || b.plataforma?.nombre || "";
+          return nombreA.localeCompare(nombreB, "es");
+        });
+        setDisponibilidades(ordenadas);
+      }
 
-          setDisponibilidades(
-            [],
-          );
-
-          setErrorDisponibilidad(
-            "No se pudieron cargar los enlaces.",
-          );
-        } else {
-          const ordenadas = [
-            ...(data || []),
-          ].sort((a, b) => {
-            const nombreA =
-              a.nombre_personalizado ||
-              a.plataforma
-                ?.nombre ||
-              "";
-
-            const nombreB =
-              b.nombre_personalizado ||
-              b.plataforma
-                ?.nombre ||
-              "";
-
-            return nombreA.localeCompare(
-              nombreB,
-              "es",
-            );
-          });
-
-          setDisponibilidades(
-            ordenadas,
-          );
-        }
-
-        setCargandoDisponibilidad(
-          false,
-        );
-      };
+      setCargandoDisponibilidad(false);
+    };
 
     cargarDisponibilidad();
 
@@ -566,370 +324,395 @@ const Detalle = ({
     };
   }, [item?.id]);
 
+  useEffect(() => {
+    if (!usuario?.id || !item?.id) {
+      setEsFavorito(false);
+      setEstaEnListaPersonalizada(false);
+      setCargandoGuardados(false);
+      return undefined;
+    }
+
+    let activo = true;
+
+    const cargarGuardados = async () => {
+      setCargandoGuardados(true);
+
+      const { data: listasData, error: listasError } = await supabase
+        .from("listas")
+        .select("id, nombre")
+        .eq("user_id", usuario.id);
+
+      if (!activo) return;
+
+      if (listasError) {
+        console.error("Error cargando estado de listas:", listasError);
+        setEsFavorito(false);
+        setEstaEnListaPersonalizada(false);
+        setCargandoGuardados(false);
+        return;
+      }
+
+      const listasUsuario = listasData || [];
+      const listaFavoritos = listasUsuario.find(
+        (lista) =>
+          String(lista.nombre || "").trim().toLowerCase() ===
+          NOMBRE_FAVORITOS.toLowerCase(),
+      );
+
+      if (listasUsuario.length === 0) {
+        setEsFavorito(false);
+        setEstaEnListaPersonalizada(false);
+        setCargandoGuardados(false);
+        return;
+      }
+
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("lista_items")
+        .select("lista_id")
+        .eq("libreria_id", item.id)
+        .in(
+          "lista_id",
+          listasUsuario.map((lista) => lista.id),
+        );
+
+      if (!activo) return;
+
+      if (itemsError) {
+        console.error("Error cargando elementos guardados:", itemsError);
+        setEsFavorito(false);
+        setEstaEnListaPersonalizada(false);
+        setCargandoGuardados(false);
+        return;
+      }
+
+      const idsConObra = new Set(
+        (itemsData || []).map((registro) => String(registro.lista_id)),
+      );
+
+      setEsFavorito(
+        listaFavoritos ? idsConObra.has(String(listaFavoritos.id)) : false,
+      );
+
+      setEstaEnListaPersonalizada(
+        listasUsuario.some(
+          (lista) =>
+            String(lista.nombre || "").trim().toLowerCase() !==
+              NOMBRE_FAVORITOS.toLowerCase() &&
+            idsConObra.has(String(lista.id)),
+        ),
+      );
+
+      setCargandoGuardados(false);
+    };
+
+    cargarGuardados();
+
+    return () => {
+      activo = false;
+    };
+  }, [usuario?.id, item?.id, versionGuardados]);
+
   if (!item) return null;
 
-  const valoracionesPositivas =
-    comentarios.filter(
-      (comentario) =>
-        comentario.rating === true,
-    ).length;
-
-  const valoracionesNegativas =
-    comentarios.filter(
-      (comentario) =>
-        comentario.rating === false,
-    ).length;
-
-  const totalValoraciones =
-    valoracionesPositivas +
-    valoracionesNegativas;
-
+  const valoracionesPositivas = comentarios.filter(
+    (comentario) => comentario.rating === true,
+  ).length;
+  const valoracionesNegativas = comentarios.filter(
+    (comentario) => comentario.rating === false,
+  ).length;
+  const totalValoraciones = valoracionesPositivas + valoracionesNegativas;
   const porcentajeRecomendacion =
     totalValoraciones > 0
-      ? Math.round(
-          (valoracionesPositivas /
-            totalValoraciones) *
-            100,
-        )
+      ? Math.round((valoracionesPositivas / totalValoraciones) * 100)
       : 0;
 
-  const caracteresActuales =
-    nuevoComentario.trim().length;
-
-  const faltanCaracteres =
-    MIN_CARACTERES -
-    caracteresActuales;
-
+  const caracteresActuales = nuevoComentario.trim().length;
+  const faltanCaracteres = MIN_CARACTERES - caracteresActuales;
   const textoValido =
-    caracteresActuales >=
-      MIN_CARACTERES &&
-    caracteresActuales <=
-      MAX_CARACTERES;
+    caracteresActuales >= MIN_CARACTERES &&
+    caracteresActuales <= MAX_CARACTERES;
 
   const generosMostrados =
     item.genero ||
-    (Array.isArray(
-      item.generos,
-    )
-      ? item.generos.join(", ")
-      : item.generos) ||
+    (Array.isArray(item.generos) ? item.generos.join(", ") : item.generos) ||
     "Sin género";
-
-  const anioMostrado =
-    item.anio ||
-    item.anio_pub ||
-    "Sin año";
-
+  const anioMostrado = item.anio || item.anio_pub || "Sin año";
   const descripcionMostrada =
-    item.descripcion ||
-    item.sinopsis ||
-    "Sin sinopsis disponible.";
-
-  const imagenMostrada =
-    item.imagen ||
-    item.cover;
-
+    item.descripcion || item.sinopsis || "Sin sinopsis disponible.";
+  const imagenMostrada = item.imagen || item.cover;
   const bannerMostrado =
-    item.imagenBanner ||
-    item.banner ||
-    imagenMostrada;
+    item.imagenBanner || item.banner || imagenMostrada;
 
-  const deponerComentario =
-    async (evento) => {
-      evento.preventDefault();
+  const obtenerOCrearListaFavoritos = async () => {
+    const { data: existente, error: buscarError } = await supabase
+      .from("listas")
+      .select("id, nombre, es_privada")
+      .eq("user_id", usuario.id)
+      .eq("nombre", NOMBRE_FAVORITOS)
+      .maybeSingle();
 
-      if (!usuario) {
-        setErrorEnvio(
-          "Debes iniciar sesión para publicar una reseña.",
-        );
+    if (buscarError) throw buscarError;
+    if (existente) return existente;
 
-        return;
-      }
+    const { data: creada, error: crearError } = await supabase
+      .from("listas")
+      .insert({
+        user_id: usuario.id,
+        nombre: NOMBRE_FAVORITOS,
+        es_privada: true,
+      })
+      .select("id, nombre, es_privada")
+      .single();
 
-      if (!textoValido) return;
+    if (!crearError) return creada;
 
-      setEnviando(true);
-      setErrorEnvio(null);
-      setMensajeAccion(null);
-
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("resenias")
-        .insert({
-          libreria_id:
-            item.id,
-
-          user_id:
-            usuario.id,
-
-          rating:
-            ratingPositivo,
-
-          review_text:
-            nuevoComentario.trim(),
-        })
-        .select(`
-          id,
-          libreria_id,
-          user_id,
-          rating,
-          review_text,
-          created_at,
-          perfiles (
-            username
-          )
-        `)
+    if (crearError.code === "23505") {
+      const { data: recuperada, error: recuperarError } = await supabase
+        .from("listas")
+        .select("id, nombre, es_privada")
+        .eq("user_id", usuario.id)
+        .eq("nombre", NOMBRE_FAVORITOS)
         .single();
 
-      setEnviando(false);
+      if (recuperarError) throw recuperarError;
+      return recuperada;
+    }
 
-      if (error) {
-        console.error(
-          "Error publicando reseña:",
-          error,
-        );
+    throw crearError;
+  };
 
-        setErrorEnvio(
-          "No se pudo publicar tu reseña. Intenta nuevamente.",
-        );
-
-        return;
-      }
-
-      setComentarios(
-        (anteriores) => [
-          data,
-          ...anteriores,
-        ],
-      );
-
-      setNuevoComentario("");
-      setRatingPositivo(true);
-
-      setMensajeAccion({
-        tipo: "exito",
-
-        texto:
-          "Tu reseña se publicó correctamente.",
-      });
-    };
-
-  const eliminarResenia = async (
-    resenia,
-  ) => {
-    if (!usuario) {
+  const alternarFavorito = async () => {
+    if (!usuario?.id) {
       setMensajeAccion({
         tipo: "error",
-        texto:
-          "Debes iniciar sesión.",
+        texto: "Debes iniciar sesión para guardar favoritos.",
       });
-
       return;
     }
 
-    if (
-      resenia.user_id !==
-      usuario.id
-    ) {
-      setMensajeAccion({
-        tipo: "error",
+    if (procesandoFavorito) return;
 
-        texto:
-          "Solo puedes eliminar tus propias reseñas.",
-      });
-
-      return;
-    }
-
-    const confirmado =
-      window.confirm(
-        "¿Deseas eliminar esta reseña? Esta acción no se puede deshacer.",
-      );
-
-    if (!confirmado) return;
-
-    setReseniaProcesando(
-      resenia.id,
-    );
-
+    setProcesandoFavorito(true);
     setMensajeAccion(null);
 
-    const {
-      data,
-      error,
-    } = await supabase
+    try {
+      const listaFavoritos = await obtenerOCrearListaFavoritos();
+
+      if (esFavorito) {
+        const { error } = await supabase
+          .from("lista_items")
+          .delete()
+          .eq("lista_id", listaFavoritos.id)
+          .eq("libreria_id", item.id);
+
+        if (error) throw error;
+
+        setEsFavorito(false);
+        setMensajeAccion({
+          tipo: "exito",
+          texto: "La obra se quitó de Favoritos.",
+        });
+      } else {
+        const { error } = await supabase.from("lista_items").insert({
+          lista_id: listaFavoritos.id,
+          libreria_id: item.id,
+        });
+
+        if (error && error.code !== "23505") throw error;
+
+        setEsFavorito(true);
+        setMensajeAccion({
+          tipo: "exito",
+          texto: "La obra se agregó a Favoritos.",
+        });
+      }
+    } catch (error) {
+      console.error("Error actualizando Favoritos:", error);
+      setMensajeAccion({
+        tipo: "error",
+        texto: "No se pudo actualizar Favoritos.",
+      });
+    } finally {
+      setProcesandoFavorito(false);
+    }
+  };
+
+  const abrirModalListas = () => {
+    if (!usuario?.id) {
+      setMensajeAccion({
+        tipo: "error",
+        texto: "Debes iniciar sesión para crear y usar listas.",
+      });
+      return;
+    }
+
+    setMensajeAccion(null);
+    setMostrarModalListas(true);
+  };
+
+  const deponerComentario = async (evento) => {
+    evento.preventDefault();
+
+    if (!usuario) {
+      setErrorEnvio("Debes iniciar sesión para publicar una reseña.");
+      return;
+    }
+
+    if (!textoValido) return;
+
+    setEnviando(true);
+    setErrorEnvio(null);
+    setMensajeAccion(null);
+
+    const { data, error } = await supabase
+      .from("resenias")
+      .insert({
+        libreria_id: item.id,
+        user_id: usuario.id,
+        rating: ratingPositivo,
+        review_text: nuevoComentario.trim(),
+      })
+      .select(`
+        id,
+        libreria_id,
+        user_id,
+        rating,
+        review_text,
+        created_at,
+        perfiles (
+          username,
+          pfp
+        )
+      `)
+      .single();
+
+    setEnviando(false);
+
+    if (error) {
+      console.error("Error publicando reseña:", error);
+      setErrorEnvio("No se pudo publicar tu reseña. Intenta nuevamente.");
+      return;
+    }
+
+    setComentarios((anteriores) => [data, ...anteriores]);
+    setNuevoComentario("");
+    setRatingPositivo(true);
+    setMensajeAccion({
+      tipo: "exito",
+      texto: "Tu reseña se publicó correctamente.",
+    });
+  };
+
+  const eliminarResenia = async (resenia) => {
+    if (!usuario) {
+      setMensajeAccion({ tipo: "error", texto: "Debes iniciar sesión." });
+      return;
+    }
+
+    if (resenia.user_id !== usuario.id) {
+      setMensajeAccion({
+        tipo: "error",
+        texto: "Solo puedes eliminar tus propias reseñas.",
+      });
+      return;
+    }
+
+    const confirmado = window.confirm(
+      "¿Deseas eliminar esta reseña? Esta acción no se puede deshacer.",
+    );
+    if (!confirmado) return;
+
+    setReseniaProcesando(resenia.id);
+    setMensajeAccion(null);
+
+    const { data, error } = await supabase
       .from("resenias")
       .delete()
-      .eq(
-        "id",
-        resenia.id,
-      )
-      .eq(
-        "user_id",
-        usuario.id,
-      )
+      .eq("id", resenia.id)
+      .eq("user_id", usuario.id)
       .select("id")
       .maybeSingle();
 
     setReseniaProcesando(null);
 
     if (error) {
-      console.error(
-        "Error eliminando reseña:",
-        error,
-      );
-
+      console.error("Error eliminando reseña:", error);
       setMensajeAccion({
         tipo: "error",
-
-        texto:
-          "No se pudo eliminar la reseña.",
+        texto: "No se pudo eliminar la reseña.",
       });
-
       return;
     }
 
     if (!data) {
       setMensajeAccion({
         tipo: "error",
-
-        texto:
-          "La reseña no existe o no tienes permiso para eliminarla.",
+        texto: "La reseña no existe o no tienes permiso para eliminarla.",
       });
-
       return;
     }
 
-    setComentarios(
-      (anteriores) =>
-        anteriores.filter(
-          (comentario) =>
-            comentario.id !==
-            resenia.id,
-        ),
+    setComentarios((anteriores) =>
+      anteriores.filter((comentario) => comentario.id !== resenia.id),
     );
-
-    setMensajeAccion({
-      tipo: "exito",
-
-      texto:
-        "La reseña fue eliminada.",
-    });
+    setMensajeAccion({ tipo: "exito", texto: "La reseña fue eliminada." });
   };
 
-  const abrirReporte = (
-    resenia,
-  ) => {
+  const abrirReporte = (resenia) => {
     if (!usuario) {
       setMensajeAccion({
         tipo: "error",
-
-        texto:
-          "Debes iniciar sesión para reportar una reseña.",
+        texto: "Debes iniciar sesión para reportar una reseña.",
       });
-
       return;
     }
 
-    if (
-      resenia.user_id ===
-      usuario.id
-    ) {
+    if (resenia.user_id === usuario.id) {
       setMensajeAccion({
         tipo: "error",
-
-        texto:
-          "No puedes reportar tu propia reseña.",
+        texto: "No puedes reportar tu propia reseña.",
       });
-
       return;
     }
 
     setMensajeAccion(null);
-    setReseniaAReportar(
-      resenia,
-    );
+    setReseniaAReportar(resenia);
   };
 
   const confirmarReporte = () => {
     setReseniaAReportar(null);
-
     setMensajeAccion({
       tipo: "exito",
-
-      texto:
-        "El reporte fue enviado a los administradores.",
+      texto: "El reporte fue enviado a los administradores.",
     });
   };
 
-  const formatearFecha = (
-    fechaISO,
-  ) => {
+  const formatearFecha = (fechaISO) => {
     if (!fechaISO) return "";
 
-    const fecha =
-      new Date(fechaISO);
-
+    const fecha = new Date(fechaISO);
     const ahora = new Date();
+    const diferenciaDias = Math.floor(
+      (ahora - fecha) / (1000 * 60 * 60 * 24),
+    );
 
-    const diferenciaDias =
-      Math.floor(
-        (ahora - fecha) /
-          (1000 *
-            60 *
-            60 *
-            24),
-      );
-
-    if (
-      diferenciaDias <= 0
-    ) {
-      return "hoy";
-    }
-
-    if (
-      diferenciaDias === 1
-    ) {
-      return "hace 1 día";
-    }
-
+    if (diferenciaDias <= 0) return "hoy";
+    if (diferenciaDias === 1) return "hace 1 día";
     return `hace ${diferenciaDias} días`;
   };
 
-  const obtenerTextoPrincipalEnlace =
-    (disponibilidad) => {
-      const plataforma =
-        disponibilidad.plataforma;
+  const obtenerTextoPrincipalEnlace = (disponibilidad) => {
+    const plataforma = disponibilidad.plataforma;
+    const nombrePersonalizado =
+      disponibilidad.nombre_personalizado?.trim();
 
-      const nombrePersonalizado =
-        disponibilidad.nombre_personalizado?.trim();
+    if (nombrePersonalizado) return nombrePersonalizado;
 
-      if (nombrePersonalizado) {
-        return nombrePersonalizado;
-      }
-
-      const nombre =
-        plataforma?.nombre ||
-        "Enlace externo";
-
-      if (
-        plataforma?.tipo ===
-        "streaming"
-      ) {
-        return `Ver en ${nombre}`;
-      }
-
-      if (
-        plataforma?.tipo ===
-        "tienda"
-      ) {
-        return `Comprar en ${nombre}`;
-      }
-
-      return nombre;
-    };
+    const nombre = plataforma?.nombre || "Enlace externo";
+    if (plataforma?.tipo === "streaming") return `Ver en ${nombre}`;
+    if (plataforma?.tipo === "tienda") return `Comprar en ${nombre}`;
+    return nombre;
+  };
 
   return (
     <div className="min-h-screen w-full bg-zinc-950 pb-24 text-white">
@@ -939,9 +722,7 @@ const Detalle = ({
           alt={item.titulo}
           className="h-full w-full scale-105 object-cover object-top opacity-40 blur-sm"
         />
-
         <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
-
         <button
           type="button"
           onClick={onVolver}
@@ -960,7 +741,6 @@ const Detalle = ({
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-
           Volver
         </button>
       </div>
@@ -979,18 +759,11 @@ const Detalle = ({
             <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-(--accent)">
               {item.titulo}
             </h4>
-
             <p className="mb-2 text-sm opacity-60">
-              <span className="font-bold text-white">
-                Año:
-              </span>{" "}
-              {anioMostrado}
+              <span className="font-bold text-white">Año:</span> {anioMostrado}
             </p>
-
             <p className="mb-4 text-sm opacity-60">
-              <span className="font-bold text-white">
-                Género:
-              </span>{" "}
+              <span className="font-bold text-white">Género:</span>{" "}
               {generosMostrados}
             </p>
 
@@ -1000,88 +773,54 @@ const Detalle = ({
               </p>
 
               {cargandoDisponibilidad ? (
-                <p className="text-xs text-zinc-500">
-                  Cargando enlaces...
-                </p>
+                <p className="text-xs text-zinc-500">Cargando enlaces...</p>
               ) : errorDisponibilidad ? (
-                <p className="text-xs text-rose-400">
-                  {
-                    errorDisponibilidad
-                  }
-                </p>
-              ) : disponibilidades
-                  .length === 0 ? (
+                <p className="text-xs text-rose-400">{errorDisponibilidad}</p>
+              ) : disponibilidades.length === 0 ? (
                 <p className="text-xs text-zinc-500">
-                  No hay enlaces
-                  disponibles.
+                  No hay enlaces disponibles.
                 </p>
               ) : (
                 <ul className="divide-y divide-white/5">
-                  {disponibilidades.map(
-                    (
-                      disponibilidad,
-                    ) => {
-                      const tipo =
-                        disponibilidad
-                          .plataforma
-                          ?.tipo ||
-                        "otro";
+                  {disponibilidades.map((disponibilidad) => {
+                    const tipo = disponibilidad.plataforma?.tipo || "otro";
+                    const textoPrincipal =
+                      obtenerTextoPrincipalEnlace(disponibilidad);
 
-                      const textoPrincipal =
-                        obtenerTextoPrincipalEnlace(
-                          disponibilidad,
-                        );
-
-                      return (
-                        <li
-                          key={
-                            disponibilidad.id
-                          }
+                    return (
+                      <li key={disponibilidad.id}>
+                        <a
+                          href={disponibilidad.url_directo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center justify-between gap-3 py-3"
                         >
-                          <a
-                            href={
-                              disponibilidad.url_directo
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group flex items-center justify-between gap-3 py-3"
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-zinc-200 transition-colors group-hover:text-(--accent)">
+                              {textoPrincipal}
+                            </p>
+                            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-zinc-600">
+                              {ETIQUETAS_TIPO_ENLACE[tipo] || "Enlace externo"}
+                            </p>
+                          </div>
+                          <svg
+                            className="h-4 w-4 shrink-0 text-zinc-600 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-(--accent)"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            aria-hidden="true"
                           >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-zinc-200 transition-colors group-hover:text-(--accent)">
-                                {
-                                  textoPrincipal
-                                }
-                              </p>
-
-                              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-zinc-600">
-                                {ETIQUETAS_TIPO_ENLACE[
-                                  tipo
-                                ] ||
-                                  "Enlace externo"}
-                              </p>
-                            </div>
-
-                            <svg
-                              className="h-4 w-4 shrink-0 text-zinc-600 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-(--accent)"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              aria-hidden="true"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={
-                                  2
-                                }
-                                d="M14 3h7v7m0-7L10 14M5 7v12a2 2 0 002 2h12"
-                              />
-                            </svg>
-                          </a>
-                        </li>
-                      );
-                    },
-                  )}
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M14 3h7v7m0-7L10 14M5 7v12a2 2 0 002 2h12"
+                            />
+                          </svg>
+                        </a>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -1090,12 +829,8 @@ const Detalle = ({
               <span className="text-sm font-bold text-(--accent)">
                 Valoración:
               </span>
-
-              {totalValoraciones ===
-              0 ? (
-                <p className="mt-2 text-sm opacity-60">
-                  Sin valoraciones
-                </p>
+              {totalValoraciones === 0 ? (
+                <p className="mt-2 text-sm opacity-60">Sin valoraciones</p>
               ) : (
                 <div className="mt-2 flex items-center gap-3">
                   <img
@@ -1103,15 +838,10 @@ const Detalle = ({
                     alt="Valoración buena"
                     className="h-8 w-8 object-contain"
                   />
-
                   <div>
                     <p className="text-xl font-black text-amber-300">
-                      {
-                        porcentajeRecomendacion
-                      }
-                      %
+                      {porcentajeRecomendacion}%
                     </p>
-
                     <p className="text-[10px] uppercase tracking-wider text-zinc-600">
                       Recomendación
                     </p>
@@ -1126,15 +856,59 @@ const Detalle = ({
           <span className="mb-3 self-start rounded-md border border-(--accent)/30 bg-(--accent)/20 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-(--accent)">
             {item.tipo}
           </span>
-
           <h2 className="mb-4 text-4xl font-extrabold tracking-tight md:text-5xl">
             {item.titulo}
           </h2>
 
+          <div className="mb-7 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={alternarFavorito}
+              disabled={procesandoFavorito || cargandoGuardados}
+              className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                esFavorito
+                  ? "border-(--accent)/40 bg-(--accent)/15 text-(--accent)"
+                  : "border-white/10 bg-white/5 text-zinc-300 hover:border-(--accent)/30 hover:text-(--accent)"
+              }`}
+            >
+              <img
+                src={esFavorito ? favoritoLleno : favoritoVacio}
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5 object-contain"
+              />
+              {procesandoFavorito
+                ? "Guardando..."
+                : esFavorito
+                  ? "En favoritos"
+                  : "Agregar a favoritos"}
+            </button>
+
+            <button
+              type="button"
+              onClick={abrirModalListas}
+              disabled={cargandoGuardados}
+              className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+                estaEnListaPersonalizada
+                  ? "border-(--accent)/40 bg-(--accent)/15 text-(--accent)"
+                  : "border-white/10 bg-white/5 text-zinc-300 hover:border-(--accent)/30 hover:text-(--accent)"
+              }`}
+            >
+              <img
+                src={
+                  estaEnListaPersonalizada ? guardarLleno : guardarVacio
+                }
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5 object-contain"
+              />
+              {estaEnListaPersonalizada ? "Guardada en listas" : "Añadir a lista"}
+            </button>
+          </div>
+
           <h3 className="mb-2 border-b border-white/5 pb-2 text-lg font-bold">
             Sinopsis
           </h3>
-
           <p className="mb-12 leading-relaxed text-zinc-300">
             {descripcionMostrada}
           </p>
@@ -1142,7 +916,6 @@ const Detalle = ({
           <section className="mt-6">
             <h3 className="mb-6 flex items-center gap-2 text-xl font-bold">
               Sección de reseñas
-
               <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
                 {comentarios.length}
               </span>
@@ -1151,8 +924,7 @@ const Detalle = ({
             {mensajeAccion && (
               <div
                 className={`mb-5 rounded-xl border p-3 text-sm ${
-                  mensajeAccion.tipo ===
-                  "exito"
+                  mensajeAccion.tipo === "exito"
                     ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
                     : "border-rose-500/20 bg-rose-500/10 text-rose-300"
                 }`}
@@ -1161,41 +933,19 @@ const Detalle = ({
               </div>
             )}
 
-            {esInvitado ||
-            !usuario ? (
+            {esInvitado || !usuario ? (
               <div className="mb-8 rounded-xl border border-white/5 bg-zinc-900/40 p-4 text-sm text-zinc-400">
-                Inicia sesión para
-                dejar tu reseña sobre
-                esta obra.
+                Inicia sesión para dejar tu reseña sobre esta obra.
               </div>
             ) : (
-              <form
-                onSubmit={
-                  deponerComentario
-                }
-                className="mb-8"
-              >
+              <form onSubmit={deponerComentario} className="mb-8">
                 <textarea
                   rows="3"
-                  maxLength={
-                    MAX_CARACTERES
-                  }
-                  value={
-                    nuevoComentario
-                  }
-                  onChange={(
-                    evento,
-                  ) => {
-                    setNuevoComentario(
-                      evento.target
-                        .value,
-                    );
-
-                    if (errorEnvio) {
-                      setErrorEnvio(
-                        null,
-                      );
-                    }
+                  maxLength={MAX_CARACTERES}
+                  value={nuevoComentario}
+                  onChange={(evento) => {
+                    setNuevoComentario(evento.target.value);
+                    if (errorEnvio) setErrorEnvio(null);
                   }}
                   placeholder="Escribe tu reseña u opinión sobre esta obra..."
                   className="w-full resize-none rounded-xl border border-white/10 bg-zinc-900 p-4 text-base text-white outline-none placeholder:text-zinc-600 focus:border-(--accent)/50"
@@ -1204,13 +954,10 @@ const Detalle = ({
                 <div className="mt-1.5 flex items-center justify-between px-1">
                   <span
                     className={`text-[11px] font-mono ${
-                      textoValido
-                        ? "text-emerald-500"
-                        : "text-zinc-600"
+                      textoValido ? "text-emerald-500" : "text-zinc-600"
                     }`}
                   >
-                    {caracteresActuales <
-                    MIN_CARACTERES
+                    {caracteresActuales < MIN_CARACTERES
                       ? `Necesitas ${faltanCaracteres} caracteres más (mínimo ${MIN_CARACTERES})`
                       : `${caracteresActuales} / ${MAX_CARACTERES} caracteres`}
                   </span>
@@ -1219,11 +966,7 @@ const Detalle = ({
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    onClick={() =>
-                      setRatingPositivo(
-                        true,
-                      )
-                    }
+                    onClick={() => setRatingPositivo(true)}
                     className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
                       ratingPositivo
                         ? "border border-amber-400/40 bg-amber-500/15 text-amber-300"
@@ -1236,17 +979,12 @@ const Detalle = ({
                       aria-hidden="true"
                       className="h-7 w-7 object-contain"
                     />
-
                     Recomendada
                   </button>
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setRatingPositivo(
-                        false,
-                      )
-                    }
+                    onClick={() => setRatingPositivo(false)}
                     className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
                       !ratingPositivo
                         ? "border border-rose-500/40 bg-rose-500/15 text-rose-400"
@@ -1259,135 +997,125 @@ const Detalle = ({
                       aria-hidden="true"
                       className="h-7 w-7 object-contain"
                     />
-
                     No recomendada
                   </button>
                 </div>
 
                 {errorEnvio && (
-                  <p className="mt-3 text-xs text-rose-400">
-                    {errorEnvio}
-                  </p>
+                  <p className="mt-3 text-xs text-rose-400">{errorEnvio}</p>
                 )}
 
                 <button
                   type="submit"
-                  disabled={
-                    enviando ||
-                    !textoValido
-                  }
+                  disabled={enviando || !textoValido}
                   className="mt-3 rounded-xl bg-(--accent) px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {enviando
-                    ? "Publicando..."
-                    : "Publicar reseña"}
+                  {enviando ? "Publicando..." : "Publicar reseña"}
                 </button>
               </form>
             )}
 
             {cargandoComentarios ? (
+              <p className="text-sm text-zinc-500">Cargando reseñas...</p>
+            ) : comentarios.length === 0 ? (
               <p className="text-sm text-zinc-500">
-                Cargando reseñas...
-              </p>
-            ) : comentarios.length ===
-              0 ? (
-              <p className="text-sm text-zinc-500">
-                Todavía no hay
-                reseñas para esta
-                obra. ¡Sé el primero!
+                Todavía no hay reseñas para esta obra. ¡Sé el primero!
               </p>
             ) : (
               <div className="space-y-4">
-                {comentarios.map(
-                  (comentario) => {
-                    const esPropietario =
-                      usuario?.id ===
-                      comentario.user_id;
+                {comentarios.map((comentario) => {
+                  const esPropietario = usuario?.id === comentario.user_id;
+                  const estaProcesando =
+                    reseniaProcesando === comentario.id;
 
-                    const estaProcesando =
-                      reseniaProcesando ===
-                      comentario.id;
+                  return (
+                    <article
+                      key={comentario.id}
+                      className="rounded-xl border border-white/5 bg-zinc-900/40 p-4"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => onVerPerfil?.(comentario.user_id)}
+                            className="group flex min-w-0 items-center gap-3 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/60"
+                            title="Ver perfil"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-(--accent)/20 bg-(--accent)/10">
+                              {comentario.perfiles?.pfp ? (
+                                <img
+                                  src={comentario.perfiles.pfp}
+                                  alt={comentario.perfiles?.username || "Usuario"}
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                />
+                              ) : (
+                                <svg
+                                  className="h-5 w-5 text-(--accent)"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                  />
+                                </svg>
+                              )}
+                            </div>
 
-                    return (
-                      <article
-                        key={
-                          comentario.id
-                        }
-                        className="rounded-xl border border-white/5 bg-zinc-900/40 p-4"
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-4">
-                          <span className="flex items-center gap-2 text-xs font-bold text-(--accent)">
-                            {comentario
-                              .perfiles
-                              ?.username ||
-                              "Usuario"}
+                            <span className="min-w-0 truncate text-xs font-bold text-(--accent) transition-colors group-hover:text-purple-300 group-hover:underline">
+                              {comentario.perfiles?.username || "Usuario"}
+                            </span>
+                          </button>
 
-                            <img
-                              src={
-                                comentario.rating
-                                  ? iconoBuena
-                                  : iconoMala
-                              }
-                              alt={
-                                comentario.rating
-                                  ? "Valoración buena"
-                                  : "Valoración mala"
-                              }
-                              className="h-6 w-6 object-contain"
-                            />
-                          </span>
-
-                          <span className="font-mono text-[10px] text-zinc-600">
-                            {formatearFecha(
-                              comentario.created_at,
-                            )}
-                          </span>
+                          <img
+                            src={comentario.rating ? iconoBuena : iconoMala}
+                            alt={
+                              comentario.rating
+                                ? "Valoración buena"
+                                : "Valoración mala"
+                            }
+                            className="h-6 w-6 shrink-0 object-contain"
+                          />
                         </div>
 
-                        <p className="text-sm leading-relaxed text-zinc-300">
-                          {
-                            comentario.review_text
-                          }
-                        </p>
+                        <span className="shrink-0 font-mono text-[10px] text-zinc-600">
+                          {formatearFecha(comentario.created_at)}
+                        </span>
+                      </div>
 
-                        {usuario && (
-                          <div className="mt-4 flex justify-end border-t border-white/5 pt-3">
-                            {esPropietario ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  eliminarResenia(
-                                    comentario,
-                                  )
-                                }
-                                disabled={
-                                  estaProcesando
-                                }
-                                className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-500/20 disabled:opacity-40"
-                              >
-                                {estaProcesando
-                                  ? "Eliminando..."
-                                  : "Eliminar"}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  abrirReporte(
-                                    comentario,
-                                  )
-                                }
-                                className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-400"
-                              >
-                                Reportar
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </article>
-                    );
-                  },
-                )}
+                      <p className="text-sm leading-relaxed text-zinc-300">
+                        {comentario.review_text}
+                      </p>
+
+                      {usuario && (
+                        <div className="mt-4 flex justify-end border-t border-white/5 pt-3">
+                          {esPropietario ? (
+                            <button
+                              type="button"
+                              onClick={() => eliminarResenia(comentario)}
+                              disabled={estaProcesando}
+                              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-500/20 disabled:opacity-40"
+                            >
+                              {estaProcesando ? "Eliminando..." : "Eliminar"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => abrirReporte(comentario)}
+                              className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-400"
+                            >
+                              Reportar
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -1396,16 +1124,21 @@ const Detalle = ({
 
       {reseniaAReportar && (
         <ReportarReseniaModal
-          resenia={
-            reseniaAReportar
-          }
-          onCerrar={() =>
-            setReseniaAReportar(
-              null,
-            )
-          }
-          onReportado={
-            confirmarReporte
+          resenia={reseniaAReportar}
+          onCerrar={() => setReseniaAReportar(null)}
+          onReportado={confirmarReporte}
+        />
+      )}
+
+      {mostrarModalListas && (
+        <AgregarAListaModal
+          item={item}
+          onCerrar={() => {
+            setMostrarModalListas(false);
+            setVersionGuardados((actual) => actual + 1);
+          }}
+          onActualizado={(tieneListas) =>
+            setEstaEnListaPersonalizada(tieneListas)
           }
         />
       )}

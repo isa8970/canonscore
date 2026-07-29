@@ -4,238 +4,150 @@ import {
   useRef,
   useState,
 } from "react";
-
 import { createPortal } from "react-dom";
+
 import { supabase } from "../config/supabaseClient";
 import { useAuth } from "../context/AuthContext";
-import ModalPortal from "./ModalPortal";
 
 import iconoBuena from "/premio.png";
 import iconoMala from "/bandera.png";
 
 const ETIQUETAS_MOTIVO = {
   spam: "Spam o publicidad",
-  lenguaje_ofensivo:
-    "Lenguaje ofensivo",
-  acoso:
-    "Acoso o ataque personal",
-  spoiler:
-    "Spoiler sin advertencia",
-  contenido_inapropiado:
-    "Contenido inapropiado",
-  otro:
-    "Otro motivo",
+  lenguaje_ofensivo: "Lenguaje ofensivo",
+  acoso: "Acoso o ataque personal",
+  spoiler: "Spoiler sin advertencia",
+  contenido_inapropiado: "Contenido inapropiado",
+  otro: "Otro motivo",
 };
 
 const NotificacionesReportes = () => {
-  const {
-    usuario,
-    esAdmin,
-  } = useAuth();
+  const { usuario, esAdmin } = useAuth();
 
-  const [
-    modalAbierto,
-    setModalAbierto,
-  ] = useState(false);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [reportes, setReportes] = useState([]);
+  const [cargando, setCargando] = useState(false);
+  const [procesandoId, setProcesandoId] = useState(null);
+  const [aviso, setAviso] = useState(null);
+  const [errorCarga, setErrorCarga] = useState(null);
 
-  const [
-    reportes,
-    setReportes,
-  ] = useState([]);
+  const temporizadorAviso = useRef(null);
 
-  const [
-    cargando,
-    setCargando,
-  ] = useState(false);
-
-  const [
-    procesandoId,
-    setProcesandoId,
-  ] = useState(null);
-
-  const [
-    aviso,
-    setAviso,
-  ] = useState(null);
-
-  const [
-    errorCarga,
-    setErrorCarga,
-  ] = useState(null);
-
-  const [
-    permisoNavegador,
-    setPermisoNavegador,
-  ] = useState(() => {
-    if (
-      typeof window ===
-        "undefined" ||
-      !("Notification" in window)
-    ) {
-      return "no-disponible";
+  const cargarReportes = useCallback(async () => {
+    if (!esAdmin) {
+      setReportes([]);
+      return;
     }
 
-    return Notification.permission;
-  });
+    setCargando(true);
+    setErrorCarga(null);
 
-  const temporizadorAviso =
-    useRef(null);
-
-  const cargarReportes =
-    useCallback(async () => {
-      if (!esAdmin) {
-        setReportes([]);
-        return;
-      }
-
-      setCargando(true);
-      setErrorCarga(null);
-
-      const {
-        data,
-        error,
-      } = await supabase
-        .from(
-          "reportes_resenias",
-        )
-        .select(`
+    const { data, error } = await supabase
+      .from("reportes_resenias")
+      .select(`
+        id,
+        resenia_id,
+        motivo,
+        detalles,
+        estado,
+        created_at,
+        resenia:resenias (
           id,
-          resenia_id,
-          reportante_id,
-          motivo,
-          detalles,
-          estado,
+          user_id,
+          rating,
+          review_text,
           created_at,
-          resenia:resenias (
+          autor:perfiles (
+            username,
+            pfp
+          ),
+          obra:libreria (
             id,
-            user_id,
-            rating,
-            review_text,
-            created_at,
-            autor:perfiles (
-              username
-            ),
-            obra:libreria (
-              id,
-              titulo,
-              cover
-            )
+            titulo,
+            cover,
+            tipo
           )
-        `)
-        .eq(
-          "estado",
-          "pendiente",
         )
-        .order("created_at", {
-          ascending: false,
-        });
+      `)
+      .eq("estado", "pendiente")
+      .order("created_at", {
+        ascending: false,
+      });
 
-      setCargando(false);
+    setCargando(false);
 
-      if (error) {
-        console.error(
-          "Error cargando reportes:",
-          error,
-        );
-
-        setReportes([]);
-
-        setErrorCarga(
-          "No se pudieron cargar los reportes pendientes.",
-        );
-
-        return;
-      }
-
-      setReportes(data || []);
-    }, [esAdmin]);
-
-  const mostrarAviso =
-    useCallback((texto) => {
-      setAviso(texto);
-
-      window.clearTimeout(
-        temporizadorAviso.current,
+    if (error) {
+      console.error("Error cargando reportes:", error);
+      setReportes([]);
+      setErrorCarga(
+        "No se pudieron cargar los reportes. Revisa la consola y las políticas RLS.",
       );
+      return;
+    }
 
-      temporizadorAviso.current =
-        window.setTimeout(() => {
-          setAviso(null);
-        }, 5000);
-    }, []);
+    setReportes(data || []);
+  }, [esAdmin]);
 
-  const mostrarNotificacionNavegador =
-    useCallback(() => {
-      if (
-        typeof window ===
-          "undefined" ||
-        !("Notification" in window) ||
-        Notification.permission !==
-          "granted"
-      ) {
-        return;
-      }
+  const mostrarAviso = useCallback((mensaje) => {
+    setAviso(mensaje);
 
-      try {
-        new Notification(
-          "Nueva reseña reportada",
-          {
-            body:
-              "Hay una nueva reseña pendiente de revisión en CanonScore.",
-          },
-        );
-      } catch (error) {
-        console.error(
-          "No se pudo mostrar la notificación:",
-          error,
-        );
-      }
-    }, []);
+    window.clearTimeout(temporizadorAviso.current);
+
+    temporizadorAviso.current = window.setTimeout(() => {
+      setAviso(null);
+    }, 5000);
+  }, []);
+
+  const mostrarAvisoNavegador = useCallback(() => {
+    if (
+      typeof window === "undefined" ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted"
+    ) {
+      return;
+    }
+
+    try {
+      new Notification("Nueva reseña reportada", {
+        body: "Hay una reseña pendiente de revisión en CanonScore.",
+      });
+    } catch (error) {
+      console.error(
+        "No se pudo mostrar la notificación del navegador:",
+        error,
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (!esAdmin) {
-      setReportes([]);
       setModalAbierto(false);
-
+      setReportes([]);
       return undefined;
     }
 
     cargarReportes();
 
     const canal = supabase
-      .channel(
-        `reportes-admin-${
-          usuario?.id || "admin"
-        }`,
-      )
+      .channel(`reportes-admin-${usuario?.id || "sin-id"}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table:
-            "reportes_resenias",
+          table: "reportes_resenias",
         },
         (payload) => {
           cargarReportes();
 
-          if (
-            payload.eventType ===
-            "INSERT"
-          ) {
-            mostrarAviso(
-              "Una nueva reseña fue reportada.",
-            );
-
-            mostrarNotificacionNavegador();
+          if (payload.eventType === "INSERT") {
+            mostrarAviso("Una nueva reseña fue reportada.");
+            mostrarAvisoNavegador();
           }
         },
       )
       .subscribe((estado) => {
-        if (
-          estado ===
-          "CHANNEL_ERROR"
-        ) {
+        if (estado === "CHANNEL_ERROR") {
           console.error(
             "No se pudo conectar al canal de reportes.",
           );
@@ -243,219 +155,148 @@ const NotificacionesReportes = () => {
       });
 
     return () => {
-      window.clearTimeout(
-        temporizadorAviso.current,
-      );
-
-      supabase.removeChannel(
-        canal,
-      );
+      window.clearTimeout(temporizadorAviso.current);
+      supabase.removeChannel(canal);
     };
   }, [
     esAdmin,
     usuario?.id,
     cargarReportes,
     mostrarAviso,
-    mostrarNotificacionNavegador,
+    mostrarAvisoNavegador,
   ]);
 
-  const abrirModal = () => {
-    setAviso(null);
-    setModalAbierto(true);
-    cargarReportes();
+  useEffect(() => {
+    if (!modalAbierto) return undefined;
+
+    const cerrarConEscape = (evento) => {
+      if (evento.key === "Escape") {
+        setModalAbierto(false);
+      }
+    };
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", cerrarConEscape);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener("keydown", cerrarConEscape);
+    };
+  }, [modalAbierto]);
+
+  const activarNotificacionesNavegador = async () => {
+    if (!("Notification" in window)) {
+      alert("Este navegador no admite notificaciones.");
+      return;
+    }
+
+    const permiso = await Notification.requestPermission();
+
+    if (permiso === "granted") {
+      mostrarAviso(
+        "Las notificaciones del navegador fueron activadas.",
+      );
+    } else if (permiso === "denied") {
+      alert(
+        "Las notificaciones están bloqueadas. Actívalas desde los permisos del sitio.",
+      );
+    }
   };
 
-  const activarNotificacionesNavegador =
-    async () => {
-      if (
-        typeof window ===
-          "undefined" ||
-        !("Notification" in window)
-      ) {
-        alert(
-          "Este navegador no admite notificaciones.",
-        );
+  const descartarReporte = async (reporte) => {
+    if (!usuario || !esAdmin) return;
 
-        return;
-      }
+    const confirmado = window.confirm(
+      "¿Descartar este reporte? La reseña permanecerá publicada.",
+    );
 
-      const permiso =
-        await Notification.requestPermission();
+    if (!confirmado) return;
 
-      setPermisoNavegador(
-        permiso,
+    setProcesandoId(reporte.id);
+
+    const { data, error } = await supabase
+      .from("reportes_resenias")
+      .update({
+        estado: "descartado",
+        revisado_at: new Date().toISOString(),
+        revisado_por: usuario.id,
+      })
+      .eq("id", reporte.id)
+      .select("id")
+      .maybeSingle();
+
+    setProcesandoId(null);
+
+    if (error) {
+      console.error("Error descartando reporte:", error);
+      alert("No se pudo descartar el reporte.");
+      return;
+    }
+
+    if (!data) {
+      alert(
+        "El reporte ya no existe o no tienes permiso para modificarlo.",
       );
+      await cargarReportes();
+      return;
+    }
 
-      if (
-        permiso === "granted"
-      ) {
-        mostrarAviso(
-          "Las notificaciones del navegador fueron activadas.",
-        );
-      }
+    setReportes((actuales) =>
+      actuales.filter((actual) => actual.id !== reporte.id),
+    );
 
-      if (
-        permiso === "denied"
-      ) {
-        alert(
-          "Las notificaciones están bloqueadas. Puedes activarlas desde los permisos del sitio.",
-        );
-      }
-    };
+    mostrarAviso("El reporte fue descartado.");
+  };
 
-  const descartarReporte =
-    async (reporte) => {
-      if (!usuario || !esAdmin) {
-        return;
-      }
+  const eliminarResenia = async (reporte) => {
+    if (!esAdmin) return;
 
-      const confirmado =
-        window.confirm(
-          "¿Deseas descartar este reporte? La reseña permanecerá publicada.",
-        );
+    const confirmado = window.confirm(
+      "¿Eliminar definitivamente esta reseña? Esta acción no se puede deshacer.",
+    );
 
-      if (!confirmado) return;
+    if (!confirmado) return;
 
-      setProcesandoId(
-        reporte.id,
+    setProcesandoId(reporte.id);
+
+    const { data, error } = await supabase
+      .from("resenias")
+      .delete()
+      .eq("id", reporte.resenia_id)
+      .select("id")
+      .maybeSingle();
+
+    setProcesandoId(null);
+
+    if (error) {
+      console.error("Error eliminando reseña:", error);
+      alert("No se pudo eliminar la reseña.");
+      return;
+    }
+
+    if (!data) {
+      alert(
+        "La reseña ya no existe o no tienes permiso para eliminarla.",
       );
+      await cargarReportes();
+      return;
+    }
 
-      const {
-        data,
-        error,
-      } = await supabase
-        .from(
-          "reportes_resenias",
-        )
-        .update({
-          estado: "descartado",
-          revisado_at:
-            new Date().toISOString(),
-          revisado_por:
-            usuario.id,
-        })
-        .eq("id", reporte.id)
-        .select("id")
-        .maybeSingle();
+    setReportes((actuales) =>
+      actuales.filter((actual) => actual.id !== reporte.id),
+    );
 
-      setProcesandoId(null);
+    mostrarAviso("La reseña reportada fue eliminada.");
+  };
 
-      if (error) {
-        console.error(
-          "Error descartando reporte:",
-          error,
-        );
-
-        alert(
-          "No se pudo descartar el reporte.",
-        );
-
-        return;
-      }
-
-      if (!data) {
-        alert(
-          "El reporte ya no existe o no tienes permiso para modificarlo.",
-        );
-
-        await cargarReportes();
-        return;
-      }
-
-      setReportes(
-        (actuales) =>
-          actuales.filter(
-            (actual) =>
-              actual.id !==
-              reporte.id,
-          ),
-      );
-
-      mostrarAviso(
-        "El reporte fue descartado.",
-      );
-    };
-
-  const eliminarReseniaReportada =
-    async (reporte) => {
-      if (!esAdmin) return;
-
-      const confirmado =
-        window.confirm(
-          "¿Deseas eliminar definitivamente esta reseña? Esta acción no se puede deshacer.",
-        );
-
-      if (!confirmado) return;
-
-      setProcesandoId(
-        reporte.id,
-      );
-
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("resenias")
-        .delete()
-        .eq(
-          "id",
-          reporte.resenia_id,
-        )
-        .select("id")
-        .maybeSingle();
-
-      setProcesandoId(null);
-
-      if (error) {
-        console.error(
-          "Error eliminando reseña:",
-          error,
-        );
-
-        alert(
-          "No se pudo eliminar la reseña.",
-        );
-
-        return;
-      }
-
-      if (!data) {
-        alert(
-          "La reseña ya no existe o no tienes permiso para eliminarla.",
-        );
-
-        await cargarReportes();
-        return;
-      }
-
-      setReportes(
-        (actuales) =>
-          actuales.filter(
-            (actual) =>
-              actual.id !==
-              reporte.id,
-          ),
-      );
-
-      mostrarAviso(
-        "La reseña reportada fue eliminada.",
-      );
-    };
-
-  const formatearFecha = (
-    fechaISO,
-  ) => {
+  const formatearFecha = (fechaISO) => {
     if (!fechaISO) return "";
 
-    return new Intl.DateTimeFormat(
-      "es-MX",
-      {
-        dateStyle: "medium",
-        timeStyle: "short",
-      },
-    ).format(
-      new Date(fechaISO),
-    );
+    return new Intl.DateTimeFormat("es-MX", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(fechaISO));
   };
 
   if (!esAdmin) return null;
@@ -464,9 +305,9 @@ const NotificacionesReportes = () => {
     <>
       <button
         type="button"
-        onClick={abrirModal}
-        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-zinc-400 transition-all hover:border-(--accent)/40 hover:bg-white/5 hover:text-(--accent)"
-        aria-label="Abrir reportes"
+        onClick={() => setModalAbierto(true)}
+        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-(--text) opacity-70 transition-all hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent) hover:opacity-100"
+        aria-label="Abrir reportes de reseñas"
         title="Reportes pendientes"
       >
         <svg
@@ -485,9 +326,7 @@ const NotificacionesReportes = () => {
 
         {reportes.length > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white">
-            {reportes.length > 99
-              ? "99+"
-              : reportes.length}
+            {reportes.length > 99 ? "99+" : reportes.length}
           </span>
         )}
       </button>
@@ -496,21 +335,16 @@ const NotificacionesReportes = () => {
         createPortal(
           <button
             type="button"
-            onClick={abrirModal}
-            className="fixed right-5 top-20 w-[calc(100vw-2.5rem)] max-w-sm rounded-2xl border border-amber-500/30 bg-zinc-950 px-5 py-4 text-left shadow-2xl transition-transform hover:scale-[1.01]"
-            style={{
-              zIndex:
-                2147483646,
+            onClick={() => {
+              setAviso(null);
+              setModalAbierto(true);
             }}
+            className="fixed right-4 top-20 z-210 w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-(--accent)/30 bg-zinc-950 px-5 py-4 text-left shadow-2xl transition-transform hover:scale-[1.01] sm:right-5"
           >
-            <p className="text-xs font-black uppercase tracking-widest text-amber-300">
-              Notificación
+            <p className="text-xs font-black uppercase tracking-widest text-(--accent)">
+              Notificación de administración
             </p>
-
-            <p className="mt-1 text-sm text-zinc-300">
-              {aviso}
-            </p>
-
+            <p className="mt-1 text-sm text-zinc-300">{aviso}</p>
             <p className="mt-2 text-[10px] uppercase tracking-wider text-zinc-600">
               Presiona para revisar
             </p>
@@ -518,263 +352,187 @@ const NotificacionesReportes = () => {
           document.body,
         )}
 
-      {modalAbierto && (
-        <ModalPortal
-          onCerrar={() =>
-            setModalAbierto(false)
-          }
-        >
-          <div
-            className="relative flex max-h-[90dvh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="titulo-reportes"
-          >
-            <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-6 py-5">
-              <div>
-                <h2
-                  id="titulo-reportes"
-                  className="text-lg font-black uppercase tracking-widest text-(--accent)"
-                >
-                  Reportes de reseñas
-                </h2>
+      {modalAbierto &&
+        createPortal(
+          <div className="fixed inset-0 z-200 flex items-center justify-center p-3 sm:p-6">
+            <button
+              type="button"
+              onClick={() => setModalAbierto(false)}
+              className="absolute inset-0 h-full w-full bg-black/75 backdrop-blur-sm"
+              aria-label="Cerrar reportes"
+            />
 
-                <p className="mt-1 text-xs text-zinc-500">
-                  {reportes.length}{" "}
-                  {reportes.length ===
-                  1
-                    ? "reporte pendiente"
-                    : "reportes pendientes"}
-                </p>
+            <section className="relative flex max-h-[90dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
+              <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/5 p-5 sm:p-6">
+                <div>
+                  <h2 className="text-lg font-black uppercase tracking-widest text-(--accent)">
+                    Reportes de reseñas
+                  </h2>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {reportes.length}{" "}
+                    {reportes.length === 1
+                      ? "reporte pendiente"
+                      : "reportes pendientes"}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModalAbierto(false)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-500 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label="Cerrar"
+                >
+                  ✕
+                </button>
+              </header>
+
+              <div className="flex shrink-0 flex-col gap-3 border-b border-white/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                {typeof Notification !== "undefined" &&
+                  Notification.permission === "default" && (
+                    <button
+                      type="button"
+                      onClick={activarNotificacionesNavegador}
+                      className="rounded-xl border border-(--accent)/30 bg-(--accent)/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-(--accent) transition-colors hover:bg-(--accent)/20"
+                    >
+                      Activar avisos del navegador
+                    </button>
+                  )}
+
+                <button
+                  type="button"
+                  onClick={cargarReportes}
+                  disabled={cargando}
+                  className="self-end rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 transition-colors hover:bg-white/10 disabled:opacity-40 sm:ml-auto"
+                >
+                  {cargando ? "Actualizando..." : "Actualizar"}
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setModalAbierto(
-                    false,
-                  )
-                }
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-400 transition-all hover:bg-white/10 hover:text-white"
-                aria-label="Cerrar reportes"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18 18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </header>
-
-            <div className="flex shrink-0 flex-col gap-3 border-b border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                {permisoNavegador ===
-                  "default" && (
-                  <button
-                    type="button"
-                    onClick={
-                      activarNotificacionesNavegador
-                    }
-                    className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-amber-300 transition-all hover:bg-amber-500/20"
-                  >
-                    Activar avisos del
-                    navegador
-                  </button>
-                )}
-
-                {permisoNavegador ===
-                  "denied" && (
-                  <p className="text-xs text-rose-400">
-                    Las notificaciones
-                    están bloqueadas.
+              <div className="min-h-0 grow overflow-y-auto p-5 sm:p-6">
+                {errorCarga && (
+                  <p className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">
+                    {errorCarga}
                   </p>
                 )}
-              </div>
 
-              <button
-                type="button"
-                onClick={cargarReportes}
-                disabled={cargando}
-                className="self-end rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 transition-all hover:bg-white/10 disabled:opacity-40"
-              >
-                {cargando
-                  ? "Actualizando..."
-                  : "Actualizar"}
-              </button>
-            </div>
-
-            <div className="min-h-0 grow overflow-y-auto p-6">
-              {errorCarga && (
-                <div className="mb-5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">
-                  {errorCarga}
-                </div>
-              )}
-
-              {cargando &&
-              reportes.length === 0 ? (
-                <div className="flex min-h-64 items-center justify-center">
-                  <p className="text-sm text-zinc-500">
+                {cargando && reportes.length === 0 ? (
+                  <p className="py-12 text-center text-sm text-zinc-500">
                     Cargando reportes...
                   </p>
-                </div>
-              ) : reportes.length ===
-                0 ? (
-                <div className="flex min-h-64 items-center justify-center">
-                  <div className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-8 text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-                      <svg
-                        className="h-6 w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-
-                    <p className="mt-4 font-bold text-white">
-                      No hay reportes
-                      pendientes
+                ) : reportes.length === 0 ? (
+                  <div className="rounded-2xl border border-white/5 bg-zinc-900/30 px-6 py-14 text-center">
+                    <p className="text-base font-bold text-zinc-300">
+                      No hay reportes pendientes
                     </p>
-
-                    <p className="mt-2 text-xs text-zinc-500">
-                      Los nuevos reportes
-                      aparecerán
-                      automáticamente.
+                    <p className="mt-2 text-sm text-zinc-600">
+                      Los nuevos reportes aparecerán automáticamente.
                     </p>
                   </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {reportes.map(
-                    (reporte) => {
-                      const resenia =
-                        reporte.resenia;
-
-                      const procesando =
-                        procesandoId ===
-                        reporte.id;
+                ) : (
+                  <div className="space-y-4">
+                    {reportes.map((reporte) => {
+                      const resenia = reporte.resenia;
+                      const procesando = procesandoId === reporte.id;
+                      const autor = resenia?.autor;
+                      const obra = resenia?.obra;
 
                       return (
                         <article
                           key={reporte.id}
-                          className="flex flex-col rounded-2xl border border-amber-500/20 bg-zinc-900 p-5"
+                          className="rounded-2xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5"
                         >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-black text-white">
-                                {resenia
-                                  ?.obra
-                                  ?.titulo ||
-                                  "Obra desconocida"}
-                              </p>
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                            <div className="flex min-w-0 grow items-start gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800">
+                                {autor?.pfp ? (
+                                  <img
+                                    src={autor.pfp}
+                                    alt={autor.username || "Usuario"}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-black uppercase text-(--accent)">
+                                    {(autor?.username || "U")
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
 
-                              <p className="mt-1 text-xs text-zinc-500">
-                                Reseña de{" "}
-                                {resenia
-                                  ?.autor
-                                  ?.username ||
-                                  "Usuario"}
-                              </p>
+                              <div className="min-w-0 grow">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="truncate text-sm font-bold text-white">
+                                    {autor?.username || "Usuario"}
+                                  </p>
+
+                                  <img
+                                    src={
+                                      resenia?.rating
+                                        ? iconoBuena
+                                        : iconoMala
+                                    }
+                                    alt={
+                                      resenia?.rating
+                                        ? "Valoración positiva"
+                                        : "Valoración negativa"
+                                    }
+                                    className="h-6 w-6 object-contain"
+                                  />
+                                </div>
+
+                                <p className="mt-1 text-xs text-zinc-500">
+                                  {obra?.titulo || "Obra no disponible"}
+                                  {obra?.tipo ? ` · ${obra.tipo}` : ""}
+                                </p>
+
+                                <p className="mt-1 font-mono text-[10px] text-zinc-600">
+                                  Reportado {formatearFecha(reporte.created_at)}
+                                </p>
+                              </div>
                             </div>
 
-                            <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-amber-300">
-                              Pendiente
-                            </span>
+                            {obra?.cover && (
+                              <img
+                                src={obra.cover}
+                                alt={obra.titulo || "Portada"}
+                                className="h-20 w-14 shrink-0 rounded-lg object-cover"
+                              />
+                            )}
                           </div>
 
-                          <p className="mt-3 text-[10px] font-mono text-zinc-600">
-                            {formatearFecha(
-                              reporte.created_at,
-                            )}
-                          </p>
-
-                          <div className="mt-4 rounded-xl border border-white/10 bg-zinc-950 p-4">
-                            <div className="mb-3 flex items-center gap-2">
-                              <img
-                                src={
-                                  resenia?.rating
-                                    ? iconoBuena
-                                    : iconoMala
-                                }
-                                alt={
-                                  resenia?.rating
-                                    ? "Valoración buena"
-                                    : "Valoración mala"
-                                }
-                                className="h-7 w-7 object-contain"
-                              />
-
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                                Reseña reportada
-                              </span>
-                            </div>
-
+                          <div className="mt-4 rounded-xl border border-white/5 bg-zinc-950/60 p-4">
                             <p className="text-sm leading-relaxed text-zinc-300">
-                              {resenia
-                                ?.review_text ||
+                              {resenia?.review_text ||
                                 "La reseña ya no está disponible."}
                             </p>
                           </div>
 
-                          <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">
-                              {ETIQUETAS_MOTIVO[
-                                reporte
-                                  .motivo
-                              ] ||
+                          <div className="mt-3 rounded-xl border border-(--accent)/10 bg-(--accent)/5 p-4">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-(--accent)">
+                              {ETIQUETAS_MOTIVO[reporte.motivo] ||
                                 reporte.motivo}
                             </p>
-
                             <p className="mt-2 text-xs leading-relaxed text-zinc-400">
                               {reporte.detalles ||
                                 "El usuario no agregó detalles."}
                             </p>
                           </div>
 
-                          <div className="mt-auto flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end">
+                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
                             <button
                               type="button"
-                              onClick={() =>
-                                descartarReporte(
-                                  reporte,
-                                )
-                              }
-                              disabled={
-                                procesando
-                              }
-                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 transition-all hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                              onClick={() => descartarReporte(reporte)}
+                              disabled={procesando}
+                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              {procesando
-                                ? "Procesando..."
-                                : "Descartar"}
+                              {procesando ? "Procesando..." : "Descartar"}
                             </button>
 
                             <button
                               type="button"
-                              onClick={() =>
-                                eliminarReseniaReportada(
-                                  reporte,
-                                )
-                              }
-                              disabled={
-                                procesando ||
-                                !resenia
-                              }
-                              className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-rose-400 transition-all hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                              onClick={() => eliminarResenia(reporte)}
+                              disabled={procesando || !resenia}
+                              className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-rose-400 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               {procesando
                                 ? "Procesando..."
@@ -783,14 +541,14 @@ const NotificacionesReportes = () => {
                           </div>
                         </article>
                       );
-                    },
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </ModalPortal>
-      )}
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>,
+          document.body,
+        )}
     </>
   );
 };

@@ -3,9 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import Nav from "./components/nav";
 import Banner from "./components/banner";
 import Tarjeta from "./components/Tarjeta";
+import CarruselCatalogo from "./components/CarruselCatalogo";
 import Detalle from "./components/Detalle";
 import Perfil from "./components/Perfil";
+import PerfilPublico from "./components/PerfilPublico";
 import Listas from "./components/Listas";
+import { useAuth } from "./context/AuthContext";
 
 import { supabase } from "./config/supabaseClient";
 import { CATEGORIAS_MAP } from "./constants/categorias";
@@ -16,11 +19,13 @@ const FILTROS_INICIALES = {
 };
 
 function normalizarGeneros(item) {
-  if (Array.isArray(item.generos)) {
-    return item.generos.map((genero) => String(genero).trim()).filter(Boolean);
+  if (Array.isArray(item?.generos)) {
+    return item.generos
+      .map((genero) => String(genero).trim())
+      .filter(Boolean);
   }
 
-  const valor = item.generos ?? item.genero ?? "";
+  const valor = item?.generos ?? item?.genero ?? "";
 
   return String(valor)
     .split(",")
@@ -29,8 +34,12 @@ function normalizarGeneros(item) {
 }
 
 function calcularValoraciones(resenias = []) {
-  const positivas = resenias.filter((resenia) => resenia.rating === true).length;
-  const negativas = resenias.filter((resenia) => resenia.rating === false).length;
+  const positivas = resenias.filter(
+    (resenia) => resenia.rating === true,
+  ).length;
+  const negativas = resenias.filter(
+    (resenia) => resenia.rating === false,
+  ).length;
   const total = positivas + negativas;
 
   return {
@@ -42,7 +51,27 @@ function calcularValoraciones(resenias = []) {
   };
 }
 
+function normalizarObra(item) {
+  if (!item) return null;
+
+  const obra = item.libreria || item;
+  const generos = normalizarGeneros(obra);
+
+  return {
+    ...obra,
+    imagen: obra.imagen || obra.cover,
+    imagenBanner: obra.imagenBanner || obra.banner || obra.cover,
+    descripcion: obra.descripcion || obra.sinopsis,
+    anio: obra.anio || obra.anio_pub,
+    genero: obra.genero || generos.join(", "),
+    generos,
+    valoraciones:
+      obra.valoraciones || calcularValoraciones(obra.resenias || []),
+  };
+}
+
 function App() {
+  const { usuario } = useAuth();
   const [categoriaActiva, setCategoriaActiva] = useState("Todas");
   const [terminoBusqueda, setTerminoBusqueda] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
@@ -52,7 +81,9 @@ function App() {
   const [error, setError] = useState(null);
 
   const [vista, setVista] = useState("inicio");
+  const [vistaAnteriorPerfil, setVistaAnteriorPerfil] = useState("inicio");
   const [itemSeleccionado, setItemSeleccionado] = useState(null);
+  const [perfilPublicoId, setPerfilPublicoId] = useState(null);
 
   useEffect(() => {
     let activo = true;
@@ -81,22 +112,7 @@ function App() {
         return;
       }
 
-      const datosMapeados = (data || []).map((item) => {
-        const generos = normalizarGeneros(item);
-
-        return {
-          ...item,
-          imagen: item.cover,
-          imagenBanner: item.banner,
-          descripcion: item.sinopsis,
-          anio: item.anio_pub,
-          genero: generos.join(", "),
-          generos,
-          valoraciones: calcularValoraciones(item.resenias || []),
-        };
-      });
-
-      setMediaData(datosMapeados);
+      setMediaData((data || []).map(normalizarObra));
       setError(null);
       setLoading(false);
     };
@@ -190,16 +206,29 @@ function App() {
   }, [mediaData, categoriaActiva, terminoBusqueda, filtros]);
 
   const generosMap = useMemo(() => {
-    return datosFiltrados.reduce((acumulador, item) => {
-      const generoPrincipal = normalizarGeneros(item)[0] || "Otros";
+    const grupos = datosFiltrados.reduce((acumulador, item) => {
+      const generosItem = normalizarGeneros(item);
+      const generosParaMostrar =
+        generosItem.length > 0 ? generosItem : ["Otros"];
 
-      if (!acumulador[generoPrincipal]) {
-        acumulador[generoPrincipal] = [];
-      }
+      generosParaMostrar.forEach((genero) => {
+        if (!acumulador[genero]) {
+          acumulador[genero] = [];
+        }
 
-      acumulador[generoPrincipal].push(item);
+        acumulador[genero].push(item);
+      });
+
       return acumulador;
     }, {});
+
+    return Object.fromEntries(
+      Object.entries(grupos).sort(([generoA], [generoB]) =>
+        generoA.localeCompare(generoB, "es", {
+          sensitivity: "base",
+        }),
+      ),
+    );
   }, [datosFiltrados]);
 
   const itemBanner = useMemo(() => {
@@ -216,7 +245,11 @@ function App() {
     )?.[0] || categoriaActiva;
 
   const mostrarDetalle = (item) => {
-    setItemSeleccionado(item);
+    const obraNormalizada = normalizarObra(item);
+
+    if (!obraNormalizada?.id) return;
+
+    setItemSeleccionado(obraNormalizada);
     setVista("detalle");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -224,11 +257,50 @@ function App() {
   const volverAInicio = () => {
     setVista("inicio");
     setItemSeleccionado(null);
+    setPerfilPublicoId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const guardarVistaAnteriorPerfil = () => {
+    if (vista === "perfil" || vista === "perfil-publico") {
+      return "inicio";
+    }
+
+    return vista;
+  };
+
   const irAPerfil = () => {
+    setVistaAnteriorPerfil(guardarVistaAnteriorPerfil());
+    setPerfilPublicoId(null);
     setVista("perfil");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const mostrarPerfilUsuario = (userId) => {
+    if (!userId) return;
+
+    setVistaAnteriorPerfil(guardarVistaAnteriorPerfil());
+
+    if (usuario?.id && String(usuario.id) === String(userId)) {
+      setPerfilPublicoId(null);
+      setVista("perfil");
+    } else {
+      setPerfilPublicoId(userId);
+      setVista("perfil-publico");
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const volverDesdePerfil = () => {
+    const destino =
+      vistaAnteriorPerfil === "perfil" ||
+      vistaAnteriorPerfil === "perfil-publico"
+        ? "inicio"
+        : vistaAnteriorPerfil;
+
+    setVista(destino || "inicio");
+    setPerfilPublicoId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -238,8 +310,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-neutral-950 text-(--text) selection:bg-(--accent) selection:text-white lg:pl-64">
-
+    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-neutral-950 text-(--text) selection:bg-(--accent) selection:text-white lg:pl-64">
       <Nav
         setCategoriaActiva={setCategoriaActiva}
         setTerminoBusqueda={setTerminoBusqueda}
@@ -253,9 +324,12 @@ function App() {
         onAplicarFiltros={setFiltros}
       />
 
+      {/* Reserva el espacio del nav fijo para que no cubra el contenido. */}
+      <div className="h-14 sm:h-16" aria-hidden="true" />
+
       {vista === "inicio" && (
         <>
-          <div className="pt-6">
+          <div className="w-full min-w-0 overflow-hidden pt-0 sm:pt-2">
             {itemBanner && (
               <Banner
                 item={itemBanner}
@@ -265,15 +339,15 @@ function App() {
           </div>
 
           {error && (
-            <div className="mx-auto mt-6 max-w-350 px-6 md:px-12">
+            <div className="mx-auto mt-6 w-full max-w-350 px-4 sm:px-6 md:px-8 lg:px-12">
               <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-sm text-rose-200">
                 {error}
               </div>
             </div>
           )}
 
-          <main className="mx-auto max-w-350 px-6 py-12 md:px-12">
-            <h2 className="mb-6 border-l-4 border-(--accent) pl-3 text-left text-xl font-black uppercase tracking-widest">
+          <main className="mx-auto w-full min-w-0 max-w-350 overflow-hidden px-4 py-10 sm:px-6 md:px-8 md:py-12 lg:px-12">
+            <h2 className="mb-6 border-l-4 border-(--accent) pl-3 text-left text-base font-black uppercase tracking-widest sm:text-lg md:text-xl">
               {categoriaActiva === "Todas"
                 ? "Catálogo por géneros"
                 : etiquetaCategoria}
@@ -289,27 +363,17 @@ function App() {
               </p>
             ) : (
               Object.entries(generosMap).map(([genero, items]) => (
-                <section key={genero} className="mb-10">
-                  <div className="mb-6 flex items-center gap-4">
-                    <h3 className="text-lg font-black uppercase tracking-widest">
-                      {genero}
-                    </h3>
-                    <div className="h-px grow bg-linear-to-r from-(--accent)/30 to-transparent" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                    {items.map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        onClick={() => mostrarDetalle(item)}
-                        className="cursor-pointer text-left"
-                      >
-                        <Tarjeta item={item} />
-                      </button>
-                    ))}
-                  </div>
-                </section>
+                <CarruselCatalogo
+                  key={genero}
+                  titulo={genero}
+                  items={items}
+                  renderItem={(item) => (
+                    <Tarjeta
+                      item={item}
+                      onClick={() => mostrarDetalle(item)}
+                    />
+                  )}
+                />
               ))
             )}
           </main>
@@ -317,12 +381,28 @@ function App() {
       )}
 
       {vista === "detalle" && itemSeleccionado && (
-        <Detalle item={itemSeleccionado} onVolver={volverAInicio} />
+        <Detalle
+          item={itemSeleccionado}
+          onVolver={volverAInicio}
+          onVerPerfil={mostrarPerfilUsuario}
+        />
       )}
 
-      {vista === "perfil" && <Perfil onVolver={volverAInicio} />}
+      {vista === "perfil" && (
+        <Perfil onVolver={volverDesdePerfil} onVerDetalle={mostrarDetalle} />
+      )}
 
-      {vista === "listas" && <Listas onVolver={volverAInicio} />}
+      {vista === "perfil-publico" && perfilPublicoId && (
+        <PerfilPublico
+          perfilId={perfilPublicoId}
+          onVolver={volverDesdePerfil}
+          onVerDetalle={mostrarDetalle}
+        />
+      )}
+
+      {vista === "listas" && (
+        <Listas onVolver={volverAInicio} onVerDetalle={mostrarDetalle} />
+      )}
     </div>
   );
 }
