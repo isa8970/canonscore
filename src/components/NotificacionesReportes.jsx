@@ -7,6 +7,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { supabase } from "../config/supabaseClient";
+import ImagenConPlaceholder from "./ImagenConPlaceholder";
 import { useAuth } from "../context/AuthContext";
 
 import iconoBuena from "/premio.png";
@@ -306,7 +307,7 @@ const NotificacionesReportes = () => {
       <button
         type="button"
         onClick={() => setModalAbierto(true)}
-        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-(--text) opacity-70 transition-all hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent) hover:opacity-100"
+        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--color-border) bg-(--color-input) text-(--color-text-secondary) transition-all hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
         aria-label="Abrir reportes de reseñas"
         title="Reportes pendientes"
       >
@@ -339,7 +340,7 @@ const NotificacionesReportes = () => {
               setAviso(null);
               setModalAbierto(true);
             }}
-            className="fixed right-4 top-20 z-210 w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-(--accent)/30 bg-zinc-950 px-5 py-4 text-left shadow-2xl transition-transform hover:scale-[1.01] sm:right-5"
+            className="theme-surface fixed right-4 top-20 z-210 w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-(--accent)/30 px-5 py-4 text-left shadow-2xl transition-transform hover:scale-[1.01] sm:right-5"
           >
             <p className="text-xs font-black uppercase tracking-widest text-(--accent)">
               Notificación de administración
@@ -362,10 +363,10 @@ const NotificacionesReportes = () => {
               aria-label="Cerrar reportes"
             />
 
-            <section className="relative flex max-h-[90dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
-              <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/5 p-5 sm:p-6">
+            <section className="theme-surface relative flex max-h-[90dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border shadow-2xl">
+              <header className="flex shrink-0 items-center justify-between gap-4 border-b border-(--color-border) p-5 sm:p-6">
                 <div>
-                  <h2 className="text-lg font-black uppercase tracking-widest text-(--accent)">
+                  <h2 className="theme-modal-title text-lg font-black uppercase tracking-widest">
                     Reportes de reseñas
                   </h2>
                   <p className="mt-1 text-xs text-zinc-500">
@@ -379,14 +380,14 @@ const NotificacionesReportes = () => {
                 <button
                   type="button"
                   onClick={() => setModalAbierto(false)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-500 transition-colors hover:bg-white/10 hover:text-white"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-(--color-border) bg-(--color-surface-soft) text-(--color-text-secondary) transition-colors hover:text-(--color-text)"
                   aria-label="Cerrar"
                 >
                   ✕
                 </button>
               </header>
 
-              <div className="flex shrink-0 flex-col gap-3 border-b border-white/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div className="flex shrink-0 flex-col gap-3 border-b border-(--color-border) p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 {typeof Notification !== "undefined" &&
                   Notification.permission === "default" && (
                     <button
@@ -402,7 +403,7 @@ const NotificacionesReportes = () => {
                   type="button"
                   onClick={cargarReportes}
                   disabled={cargando}
-                  className="self-end rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 transition-colors hover:bg-white/10 disabled:opacity-40 sm:ml-auto"
+                  className="self-end rounded-xl border border-(--color-border) bg-(--color-surface-soft) px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-(--color-text-secondary) transition-colors hover:border-(--color-border-strong) hover:text-(--color-text) disabled:opacity-40 sm:ml-auto"
                 >
                   {cargando ? "Actualizando..." : "Actualizar"}
                 </button>
@@ -420,7 +421,7 @@ const NotificacionesReportes = () => {
                     Cargando reportes...
                   </p>
                 ) : reportes.length === 0 ? (
-                  <div className="rounded-2xl border border-white/5 bg-zinc-900/30 px-6 py-14 text-center">
+                  <div className="theme-surface-soft rounded-2xl border px-6 py-14 text-center">
                     <p className="text-base font-bold text-zinc-300">
                       No hay reportes pendientes
                     </p>
@@ -439,11 +440,11 @@ const NotificacionesReportes = () => {
                       return (
                         <article
                           key={reporte.id}
-                          className="rounded-2xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5"
+                          className="theme-surface-soft rounded-2xl border p-4 sm:p-5"
                         >
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                             <div className="flex min-w-0 grow items-start gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-(--color-border) bg-(--color-surface)">
                                 {autor?.pfp ? (
                                   <img
                                     src={autor.pfp}
@@ -491,16 +492,17 @@ const NotificacionesReportes = () => {
                               </div>
                             </div>
 
-                            {obra?.cover && (
-                              <img
-                                src={obra.cover}
-                                alt={obra.titulo || "Portada"}
-                                className="h-20 w-14 shrink-0 rounded-lg object-cover"
+                            <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg border border-(--color-border) bg-(--color-image-bg)">
+                              <ImagenConPlaceholder
+                                src={obra?.cover}
+                                alt={obra?.titulo || "Portada"}
+                                className="h-full w-full object-cover"
+                                iconClassName="h-7 w-7"
                               />
-                            )}
+                            </div>
                           </div>
 
-                          <div className="mt-4 rounded-xl border border-white/5 bg-zinc-950/60 p-4">
+                          <div className="theme-surface mt-4 rounded-xl border p-4">
                             <p className="text-sm leading-relaxed text-zinc-300">
                               {resenia?.review_text ||
                                 "La reseña ya no está disponible."}
@@ -523,7 +525,7 @@ const NotificacionesReportes = () => {
                               type="button"
                               onClick={() => descartarReporte(reporte)}
                               disabled={procesando}
-                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="rounded-xl border border-(--color-border) bg-(--color-surface) px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-(--color-text-secondary) transition-colors hover:border-(--color-border-strong) hover:text-(--color-text) disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               {procesando ? "Procesando..." : "Descartar"}
                             </button>

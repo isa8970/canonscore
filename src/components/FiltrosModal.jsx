@@ -1,47 +1,51 @@
-import { useState } from "react";
-import ModalPortal from "./ModalPortal";
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const FiltrosModal = ({
-  generosDisponibles = [],
-  filtrosActuales = {
-    generos: [],
-    orden: "catalogo",
-  },
-  onAplicar = () => {},
+  generosDisponibles,
+  filtrosActuales,
+  onAplicar,
   onCerrar,
 }) => {
-  const generosIniciales =
-    Array.isArray(
-      filtrosActuales?.generos,
-    )
-      ? filtrosActuales.generos
-      : [];
-
-  const [generosSeleccionados, setGenerosSeleccionados] =
-    useState(generosIniciales);
-
-  const [orden, setOrden] = useState(
-    filtrosActuales?.orden ||
-      "catalogo",
+  const [generosSeleccionados, setGenerosSeleccionados] = useState(
+    filtrosActuales.generos || []
   );
 
-  const alternarGenero = (genero) => {
-    setGenerosSeleccionados(
-      (actuales) => {
-        if (actuales.includes(genero)) {
-          return actuales.filter(
-            (item) => item !== genero,
-          );
-        }
+  const [orden, setOrden] = useState(
+    filtrosActuales.orden || 'catalogo'
+  );
 
-        return [...actuales, genero];
-      },
-    );
+  useEffect(() => {
+    const cerrarConEscape = (event) => {
+      if (event.key === 'Escape') {
+        onCerrar();
+      }
+    };
+
+    const overflowAnterior = document.body.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', cerrarConEscape);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener('keydown', cerrarConEscape);
+    };
+  }, [onCerrar]);
+
+  const alternarGenero = (genero) => {
+    setGenerosSeleccionados((actuales) => {
+      if (actuales.includes(genero)) {
+        return actuales.filter((item) => item !== genero);
+      }
+
+      return [...actuales, genero];
+    });
   };
 
   const limpiarFiltros = () => {
     setGenerosSeleccionados([]);
-    setOrden("catalogo");
+    setOrden('catalogo');
   };
 
   const aplicarFiltros = () => {
@@ -55,35 +59,30 @@ const FiltrosModal = ({
 
   const hayFiltrosTemporales =
     generosSeleccionados.length > 0 ||
-    orden !== "catalogo";
+    orden !== 'catalogo';
 
-  return (
-    <ModalPortal onCerrar={onCerrar}>
+  return createPortal(
+    <div
+      className="fixed inset-0 z-120 flex items-center justify-center bg-black/75 backdrop-blur-md p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-filtros"
+      onClick={onCerrar}
+    >
       <div
-        className="
-          relative
-          flex max-h-[90dvh]
-          w-full max-w-2xl
-          flex-col
-          overflow-hidden
-          rounded-3xl
-          border border-white/10
-          bg-zinc-950
-          shadow-2xl
-        "
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="titulo-filtros"
+        className="theme-surface relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-3xl border shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
+        {/* Encabezado */}
+        <div className="flex items-center justify-between border-b border-(--color-border) px-6 py-4">
           <div>
-            <p className="mb-1 text-[11px] font-black uppercase tracking-[0.25em] text-zinc-600">
+            <p className="mb-2 text-[13px] font-black uppercase tracking-[0.25em] text-(--accent)">
               Explorar catálogo
             </p>
 
             <h2
               id="titulo-filtros"
-              className="text-xl font-black uppercase tracking-[0.2em] text-(--accent)"
+              className="theme-modal-title mb-2 text-xl font-black uppercase tracking-[0.25em]"
             >
               Filtros
             </h2>
@@ -111,11 +110,13 @@ const FiltrosModal = ({
           </button>
         </div>
 
-        <div className="min-h-0 grow overflow-y-auto px-6 py-6">
+        {/* Contenido */}
+        <div className="max-h-[65vh] overflow-y-auto px-6 py-6">
+          {/* Géneros */}
           <section>
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-widest text-white">
+                <h3 className="text-sm font-black uppercase tracking-widest text-(--color-text)">
                   Géneros
                 </h3>
 
@@ -124,87 +125,70 @@ const FiltrosModal = ({
                 </p>
               </div>
 
-              {generosSeleccionados.length >
-                0 && (
+              {generosSeleccionados.length > 0 && (
                 <span className="rounded-full border border-(--accent)/25 bg-(--accent)/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-(--accent)">
-                  {
-                    generosSeleccionados.length
-                  }{" "}
-                  seleccionados
+                  {generosSeleccionados.length} seleccionados
                 </span>
               )}
             </div>
 
-            {generosDisponibles.length ===
-            0 ? (
+            {generosDisponibles.length === 0 ? (
               <p className="text-sm text-zinc-500">
                 No hay géneros disponibles.
               </p>
             ) : (
               <div className="flex flex-wrap gap-2.5">
-                {generosDisponibles.map(
-                  (genero) => {
-                    const seleccionado =
-                      generosSeleccionados.includes(
-                        genero,
-                      );
+                {generosDisponibles.map((genero) => {
+                  const seleccionado =
+                    generosSeleccionados.includes(genero);
 
-                    return (
-                      <button
-                        key={genero}
-                        type="button"
-                        onClick={() =>
-                          alternarGenero(
-                            genero,
-                          )
-                        }
-                        aria-pressed={
-                          seleccionado
-                        }
-                        className={`rounded-full border px-4 py-2 text-xs font-bold transition-all ${
-                          seleccionado
-                            ? "border-(--accent)/50 bg-(--accent)/20 text-(--accent)"
-                            : "border-white/10 bg-zinc-900 text-zinc-400 hover:border-white/20 hover:text-white"
-                        }`}
-                      >
-                        {genero}
-                      </button>
-                    );
-                  },
-                )}
+                  return (
+                    <button
+                      key={genero}
+                      type="button"
+                      onClick={() => alternarGenero(genero)}
+                      aria-pressed={seleccionado}
+                      className={`rounded-full border px-4 py-2 text-xs font-bold transition-all ${
+                        seleccionado
+                          ? 'border-(--accent)/50 bg-(--accent)/20 text-(--accent) shadow-lg shadow-(--accent)/5'
+                          : 'border-(--color-border) bg-(--color-input) text-(--color-text-secondary) hover:border-(--color-border-strong) hover:text-(--color-text)'
+                      }`}
+                    >
+                      {genero}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </section>
 
-          <div className="my-7 h-px bg-white/5" />
+          <div className="my-7 h-px bg-(--color-border)" />
 
+          {/* Orden */}
           <section>
             <h3 className="mb-1 text-sm font-black uppercase tracking-widest text-white">
               Ordenar resultados
             </h3>
 
             <p className="mb-4 text-xs text-zinc-500">
-              Organiza las obras usando las
-              valoraciones de la comunidad.
+              Organiza las obras usando las valoraciones de la comunidad.
             </p>
 
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-3">
               <button
                 type="button"
-                onClick={() =>
-                  setOrden("catalogo")
-                }
-                className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
-                  orden === "catalogo"
-                    ? "border-(--accent)/50 bg-(--accent)/15"
-                    : "border-white/10 bg-zinc-900/60 hover:border-white/20"
+                onClick={() => setOrden('catalogo')}
+                className={`flex items-center gap-3 rounded-2xl border p-2 text-left transition-all ${
+                  orden === 'catalogo'
+                    ? 'border-(--accent)/50 bg-(--accent)/15'
+                    : 'border-(--color-border) bg-(--color-surface-soft) hover:border-(--color-border-strong)'
                 }`}
               >
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    orden === "catalogo"
-                      ? "bg-(--accent)/20 text-(--accent)"
-                      : "bg-white/5 text-zinc-500"
+                    orden === 'catalogo'
+                      ? 'bg-(--accent)/20 text-(--accent)'
+                      : 'bg-white/5 text-zinc-500'
                   }`}
                 >
                   <svg
@@ -223,7 +207,7 @@ const FiltrosModal = ({
                 </div>
 
                 <div>
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-(--color-text)">
                     Orden del catálogo
                   </p>
 
@@ -235,24 +219,18 @@ const FiltrosModal = ({
 
               <button
                 type="button"
-                onClick={() =>
-                  setOrden(
-                    "recomendacion",
-                  )
-                }
-                className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
-                  orden ===
-                  "recomendacion"
-                    ? "border-(--accent)/50 bg-(--accent)/15"
-                    : "border-white/10 bg-zinc-900/60 hover:border-white/20"
+                onClick={() => setOrden('recomendacion')}
+                className={`flex items-center gap-3 rounded-2xl border p-2 text-left transition-all ${
+                  orden === 'recomendacion'
+                    ? 'border-(--accent)/50 bg-(--accent)/15'
+                    : 'border-(--color-border) bg-(--color-surface-soft) hover:border-(--color-border-strong)'
                 }`}
               >
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    orden ===
-                    "recomendacion"
-                      ? "bg-(--accent)/20 text-(--accent)"
-                      : "bg-white/5 text-zinc-500"
+                    orden === 'recomendacion'
+                      ? 'bg-(--accent)/20 text-(--accent)'
+                      : 'bg-white/5 text-zinc-500'
                   }`}
                 >
                   <svg
@@ -271,13 +249,12 @@ const FiltrosModal = ({
                 </div>
 
                 <div>
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-(--color-text)">
                     Mayor recomendación
                   </p>
 
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    Primero muestra el porcentaje
-                    más alto.
+                    Primero muestra el porcentaje más alto.
                   </p>
                 </div>
               </button>
@@ -285,14 +262,13 @@ const FiltrosModal = ({
           </section>
         </div>
 
-        <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-white/5 bg-zinc-950 px-6 py-5">
+        {/* Acciones */}
+        <div className="grid grid-cols-2 gap-3 border-t border-(--color-border) bg-(--color-surface) px-6 py-5">
           <button
             type="button"
             onClick={limpiarFiltros}
-            disabled={
-              !hayFiltrosTemporales
-            }
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+            disabled={!hayFiltrosTemporales}
+            className="rounded-xl border border-(--color-border) bg-(--color-surface-soft) px-4 py-3 text-xs font-black uppercase tracking-wider text-(--color-text-secondary) transition-all hover:border-(--color-border-strong) hover:text-(--color-text) disabled:cursor-not-allowed disabled:opacity-30"
           >
             Limpiar
           </button>
@@ -306,7 +282,8 @@ const FiltrosModal = ({
           </button>
         </div>
       </div>
-    </ModalPortal>
+    </div>,
+    document.body
   );
 };
 

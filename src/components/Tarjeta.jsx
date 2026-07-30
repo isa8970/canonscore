@@ -2,6 +2,7 @@ import React from "react";
 
 import iconoBuena from "/premio.png";
 import iconoMala from "/bandera.png";
+import ImagenConPlaceholder from "./ImagenConPlaceholder";
 
 const Tarjeta = ({ item, onClick }) => {
   const valoraciones = item?.valoraciones ?? {
@@ -18,17 +19,16 @@ const Tarjeta = ({ item, onClick }) => {
       className="block h-full w-full min-w-0 cursor-pointer text-left"
       aria-label={`Ver detalles de ${item?.titulo || "la obra"}`}
     >
-      <article className="group flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/50 transition-all duration-300 hover:-translate-y-1 hover:border-(--accent)/40 hover:shadow-xl hover:shadow-black/20">
+      <article className="group flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-(--color-border) bg-(--color-surface) shadow-(--shadow-card) transition-all duration-300 hover:-translate-y-1 hover:border-(--accent)/40 hover:shadow-(--shadow-card-hover)">
         <div
-          className="relative w-full shrink-0 overflow-hidden bg-zinc-900"
+          className="relative w-full shrink-0 overflow-hidden bg-(--color-image-bg)"
           style={{ aspectRatio: "3 / 4" }}
         >
-          <img
+          <ImagenConPlaceholder
             src={item?.imagen}
             alt={item?.titulo || "Portada"}
-            loading="lazy"
-            draggable="false"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            iconClassName="h-14 w-14 sm:h-16 sm:w-16"
           />
         </div>
 
@@ -51,7 +51,7 @@ const Tarjeta = ({ item, onClick }) => {
             {item?.descripcion}
           </p>
 
-          <div className="mt-3 flex min-w-0 items-center justify-between gap-2 border-t border-white/5 pt-3">
+          <div className="mt-3 flex min-w-0 items-center justify-between gap-2 border-t border-(--color-border) pt-3">
             <div
               className="flex min-w-0 items-center gap-1"
               title="Valoraciones buenas"

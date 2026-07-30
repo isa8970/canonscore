@@ -4,8 +4,8 @@ import { supabase } from "../config/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import ModalPortal from "./ModalPortal";
 
-import marcadorVacio from "/Guardar-vacio.png";
-import marcadorLleno from "/Guardar-lleno.png";
+import marcadorVacio from "/Guardar-lleno.png";
+import marcadorLleno from "/Guardar-vacio.png";
 
 const NOMBRE_FAVORITOS = "Favoritos";
 const MAX_NOMBRE_LISTA = 80;
@@ -260,10 +260,10 @@ const AgregarAListaModal = ({
 
   return (
     <ModalPortal onCerrar={onCerrar}>
-      <div className="relative flex max-h-[86dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
+      <div className="theme-surface relative flex max-h-[86dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border shadow-2xl">
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-white/5 p-6">
           <div>
-            <h2 className="text-lg font-black uppercase tracking-widest text-(--accent)">
+            <h2 className="theme-modal-title text-lg font-black uppercase tracking-widest">
               Añadir a una lista
             </h2>
             <p className="mt-1 line-clamp-1 text-sm text-zinc-500">
@@ -318,7 +318,7 @@ const AgregarAListaModal = ({
                         className={`flex w-full items-center justify-between gap-4 rounded-xl border p-4 text-left transition-all disabled:opacity-50 ${
                           seleccionada
                             ? "border-(--accent)/35 bg-(--accent)/10"
-                            : "border-white/5 bg-zinc-900/40 hover:border-white/10 hover:bg-zinc-900/70"
+                            : "border-(--color-border) bg-(--color-surface-soft) hover:border-(--color-border-strong) hover:bg-(--color-surface)"
                         }`}
                       >
                         <div className="flex min-w-0 items-center gap-3">
@@ -396,11 +396,11 @@ const AgregarAListaModal = ({
                           setNombreNuevaLista(evento.target.value)
                         }
                         placeholder="Ej. Pendientes por leer"
-                        className="w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-(--accent)/50"
+                        className="theme-input w-full rounded-xl border p-3 text-sm outline-none placeholder:text-(--color-text-muted) focus:border-(--accent)/50"
                       />
                     </div>
 
-                    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-white/5 bg-zinc-900/40 p-3">
+                    <label className="theme-surface-soft flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-3">
                       <div>
                         <p className="text-xs font-bold text-white">
                           Lista privada

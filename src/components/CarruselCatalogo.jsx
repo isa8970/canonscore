@@ -129,7 +129,7 @@ const CarruselCatalogo = ({
             onClick={() => desplazar("izquierda")}
             disabled={!puedeIrIzquierda}
             aria-label={`Ver obras anteriores de ${titulo}`}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-400 transition-all hover:border-(--accent)/30 hover:bg-(--accent)/10 hover:text-(--accent) disabled:cursor-default disabled:opacity-25 disabled:hover:border-white/10 disabled:hover:bg-white/5 disabled:hover:text-zinc-400"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-(--color-border) bg-(--color-surface-soft) text-(--color-text-secondary) transition-all hover:border-(--accent)/30 hover:bg-(--accent)/10 hover:text-(--accent) disabled:cursor-default disabled:opacity-25"
           >
             <svg
               className="h-5 w-5"
@@ -152,7 +152,7 @@ const CarruselCatalogo = ({
             onClick={() => desplazar("derecha")}
             disabled={!puedeIrDerecha}
             aria-label={`Ver más obras de ${titulo}`}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-400 transition-all hover:border-(--accent)/30 hover:bg-(--accent)/10 hover:text-(--accent) disabled:cursor-default disabled:opacity-25 disabled:hover:border-white/10 disabled:hover:bg-white/5 disabled:hover:text-zinc-400"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-(--color-border) bg-(--color-surface-soft) text-(--color-text-secondary) transition-all hover:border-(--accent)/30 hover:bg-(--accent)/10 hover:text-(--accent) disabled:cursor-default disabled:opacity-25"
           >
             <svg
               className="h-5 w-5"
@@ -201,14 +201,14 @@ const CarruselCatalogo = ({
 
         {puedeIrDerecha && (
           <div
-            className="pointer-events-none absolute inset-y-0 right-0 hidden w-12 bg-linear-to-l from-neutral-950 to-transparent md:block"
+            className="pointer-events-none absolute inset-y-0 right-0 hidden w-12 bg-linear-to-l from-(--color-page) to-transparent md:block"
             aria-hidden="true"
           />
         )}
       </div>
 
       {items.length > 1 && (
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-700 md:hidden">
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-(--color-text-muted) md:hidden">
           Desliza para ver más
         </p>
       )}

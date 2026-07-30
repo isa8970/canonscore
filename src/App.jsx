@@ -1,22 +1,52 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import Nav from "./components/nav";
 import Banner from "./components/banner";
 import Tarjeta from "./components/Tarjeta";
 import CarruselCatalogo from "./components/CarruselCatalogo";
+import CatalogoCompleto from "./components/CatalogoCompleto";
 import Detalle from "./components/Detalle";
 import Perfil from "./components/Perfil";
 import PerfilPublico from "./components/PerfilPublico";
 import Listas from "./components/Listas";
+import ActualizarPasswordModal from "./components/ActualizarPasswordModal";
 import { useAuth } from "./context/AuthContext";
 
 import { supabase } from "./config/supabaseClient";
 import { CATEGORIAS_MAP } from "./constants/categorias";
+import "./theme.css";
 
 const FILTROS_INICIALES = {
   generos: [],
   orden: "catalogo",
 };
+
+const MAXIMO_POR_CARRUSEL = 12;
+const CLAVE_TEMA = "canonscore-theme";
+
+function leerTemaGuardado() {
+  if (typeof window === "undefined") return "dark";
+
+  try {
+    const temaGuardado = window.localStorage.getItem(CLAVE_TEMA);
+    return temaGuardado === "light" ? "light" : "dark";
+  } catch (error) {
+    console.warn("No se pudo leer la preferencia de tema:", error);
+    return "dark";
+  }
+}
+
+function aplicarTemaDocumento(tema) {
+  if (typeof document === "undefined") return;
+  document.documentElement.dataset.theme = tema;
+  document.documentElement.style.colorScheme = tema;
+}
+
+function obtenerTemaInicial() {
+  const tema = leerTemaGuardado();
+  aplicarTemaDocumento(tema);
+  return tema;
+}
 
 function normalizarGeneros(item) {
   if (Array.isArray(item?.generos)) {
@@ -70,8 +100,60 @@ function normalizarObra(item) {
   };
 }
 
+function fechaNumerica(item) {
+  const fecha = new Date(item?.created_at || 0).getTime();
+
+  if (Number.isFinite(fecha) && fecha > 0) {
+    return fecha;
+  }
+
+  const idNumerico = Number(item?.id);
+  return Number.isFinite(idNumerico) ? idNumerico : 0;
+}
+
+function compararPopularidad(a, b) {
+  const totalA = a?.valoraciones?.total ?? 0;
+  const totalB = b?.valoraciones?.total ?? 0;
+
+  if (totalB !== totalA) {
+    return totalB - totalA;
+  }
+
+  const porcentajeA = a?.valoraciones?.porcentajeRecomendacion ?? 0;
+  const porcentajeB = b?.valoraciones?.porcentajeRecomendacion ?? 0;
+
+  if (porcentajeB !== porcentajeA) {
+    return porcentajeB - porcentajeA;
+  }
+
+  const positivasA = a?.valoraciones?.positivas ?? 0;
+  const positivasB = b?.valoraciones?.positivas ?? 0;
+
+  if (positivasB !== positivasA) {
+    return positivasB - positivasA;
+  }
+
+  return fechaNumerica(b) - fechaNumerica(a);
+}
+
+function seleccionarSinRepetir(candidatos, idsUsados, limite) {
+  const seleccion = [];
+
+  for (const item of candidatos) {
+    if (!item?.id || idsUsados.has(item.id)) continue;
+
+    seleccion.push(item);
+    idsUsados.add(item.id);
+
+    if (seleccion.length >= limite) break;
+  }
+
+  return seleccion;
+}
+
 function App() {
   const { usuario } = useAuth();
+  const [tema, setTema] = useState(obtenerTemaInicial);
   const [categoriaActiva, setCategoriaActiva] = useState("Todas");
   const [terminoBusqueda, setTerminoBusqueda] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
@@ -84,6 +166,75 @@ function App() {
   const [vistaAnteriorPerfil, setVistaAnteriorPerfil] = useState("inicio");
   const [itemSeleccionado, setItemSeleccionado] = useState(null);
   const [perfilPublicoId, setPerfilPublicoId] = useState(null);
+  const [mostrarActualizarPassword, setMostrarActualizarPassword] =
+    useState(false);
+
+  useLayoutEffect(() => {
+    aplicarTemaDocumento(tema);
+
+    try {
+      window.localStorage.setItem(CLAVE_TEMA, tema);
+    } catch (error) {
+      console.warn("No se pudo guardar la preferencia de tema:", error);
+    }
+  }, [tema]);
+
+  useEffect(() => {
+    const sincronizarTema = () => {
+      const temaGuardado = leerTemaGuardado();
+      aplicarTemaDocumento(temaGuardado);
+      setTema((actual) =>
+        actual === temaGuardado ? actual : temaGuardado,
+      );
+    };
+
+    const manejarStorage = (evento) => {
+      if (!evento.key || evento.key === CLAVE_TEMA) {
+        sincronizarTema();
+      }
+    };
+
+    window.addEventListener("storage", manejarStorage);
+    window.addEventListener("pageshow", sincronizarTema);
+
+    return () => {
+      window.removeEventListener("storage", manejarStorage);
+      window.removeEventListener("pageshow", sincronizarTema);
+    };
+  }, []);
+
+  const alternarTema = () => {
+    setTema((temaActual) =>
+      temaActual === "dark" ? "light" : "dark",
+    );
+  };
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const esRecuperacion =
+      url.searchParams.get("recuperar") === "1" ||
+      hashParams.get("type") === "recovery" ||
+      url.searchParams.get("type") === "recovery";
+
+    if (esRecuperacion) {
+      setMostrarActualizarPassword(true);
+    }
+
+    const { data } = supabase.auth.onAuthStateChange((evento) => {
+      const temaGuardado = leerTemaGuardado();
+      aplicarTemaDocumento(temaGuardado);
+      setTema(temaGuardado);
+
+      if (evento === "PASSWORD_RECOVERY") {
+        setMostrarActualizarPassword(true);
+      }
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let activo = true;
@@ -112,7 +263,7 @@ function App() {
         return;
       }
 
-      setMediaData((data || []).map(normalizarObra));
+      setMediaData((data || []).map(normalizarObra).filter(Boolean));
       setError(null);
       setLoading(false);
     };
@@ -160,6 +311,14 @@ function App() {
     );
   }, [mediaData]);
 
+  const hayBusqueda = terminoBusqueda.trim().length > 0;
+  const hayFiltrosActivos =
+    (Array.isArray(filtros?.generos) && filtros.generos.length > 0) ||
+    filtros?.orden === "recomendacion";
+
+  const modoDescubrimiento =
+    categoriaActiva === "Todas" && !hayBusqueda && !hayFiltrosActivos;
+
   const datosFiltrados = useMemo(() => {
     const busqueda = terminoBusqueda.trim().toLowerCase();
     const generosSeleccionados = Array.isArray(filtros?.generos)
@@ -205,47 +364,143 @@ function App() {
     return resultado;
   }, [mediaData, categoriaActiva, terminoBusqueda, filtros]);
 
-  const generosMap = useMemo(() => {
-    const grupos = datosFiltrados.reduce((acumulador, item) => {
-      const generosItem = normalizarGeneros(item);
-      const generosParaMostrar =
-        generosItem.length > 0 ? generosItem : ["Otros"];
-
-      generosParaMostrar.forEach((genero) => {
-        if (!acumulador[genero]) {
-          acumulador[genero] = [];
-        }
-
-        acumulador[genero].push(item);
-      });
-
-      return acumulador;
-    }, {});
-
-    return Object.fromEntries(
-      Object.entries(grupos).sort(([generoA], [generoB]) =>
-        generoA.localeCompare(generoB, "es", {
-          sensitivity: "base",
-        }),
-      ),
-    );
-  }, [datosFiltrados]);
-
-  const itemBanner = useMemo(() => {
-    if (datosFiltrados.length > 0) {
-      return datosFiltrados[0];
+  const seccionesDestacadas = useMemo(() => {
+    if (mediaData.length === 0) {
+      return {
+        recomendadas: [],
+        comentadas: [],
+        recientes: [],
+      };
     }
 
-    return mediaData[0] || null;
-  }, [datosFiltrados, mediaData]);
+    const limitePorFila = Math.min(
+      MAXIMO_POR_CARRUSEL,
+      Math.max(1, Math.ceil(mediaData.length / 3)),
+    );
+
+    const porRecomendacion = [...mediaData]
+      .filter((item) => (item.valoraciones?.total ?? 0) > 0)
+      .sort((a, b) => {
+        const porcentajeA = a.valoraciones?.porcentajeRecomendacion ?? 0;
+        const porcentajeB = b.valoraciones?.porcentajeRecomendacion ?? 0;
+        const totalA = a.valoraciones?.total ?? 0;
+        const totalB = b.valoraciones?.total ?? 0;
+
+        if (porcentajeB !== porcentajeA) {
+          return porcentajeB - porcentajeA;
+        }
+
+        return totalB - totalA;
+      });
+
+    const porComentarios = [...mediaData]
+      .filter((item) => (item.valoraciones?.total ?? 0) > 0)
+      .sort((a, b) => {
+        const totalA = a.valoraciones?.total ?? 0;
+        const totalB = b.valoraciones?.total ?? 0;
+
+        if (totalB !== totalA) {
+          return totalB - totalA;
+        }
+
+        return (
+          (b.valoraciones?.porcentajeRecomendacion ?? 0) -
+          (a.valoraciones?.porcentajeRecomendacion ?? 0)
+        );
+      });
+
+    const porFecha = [...mediaData].sort(
+      (a, b) => fechaNumerica(b) - fechaNumerica(a),
+    );
+
+    const idsUsados = new Set();
+
+    return {
+      recomendadas: seleccionarSinRepetir(
+        porRecomendacion,
+        idsUsados,
+        limitePorFila,
+      ),
+      comentadas: seleccionarSinRepetir(
+        porComentarios,
+        idsUsados,
+        limitePorFila,
+      ),
+      recientes: seleccionarSinRepetir(
+        porFecha,
+        idsUsados,
+        limitePorFila,
+      ),
+    };
+  }, [mediaData]);
+
+  const mostrarBanner = !hayBusqueda && !hayFiltrosActivos;
+
+  const itemBanner = useMemo(() => {
+    const candidatos =
+      categoriaActiva === "Todas"
+        ? mediaData
+        : mediaData.filter((item) => item.tipo === categoriaActiva);
+
+    if (candidatos.length === 0) {
+      return null;
+    }
+
+    return [...candidatos].sort(compararPopularidad)[0] || null;
+  }, [mediaData, categoriaActiva]);
 
   const etiquetaCategoria =
     Object.entries(CATEGORIAS_MAP).find(
       ([, valor]) => valor === categoriaActiva,
     )?.[0] || categoriaActiva;
 
+  const tituloCatalogo = useMemo(() => {
+    if (categoriaActiva !== "Todas") {
+      return etiquetaCategoria;
+    }
+
+    if (hayBusqueda) {
+      return "Resultados de búsqueda";
+    }
+
+    return "Resultados filtrados";
+  }, [categoriaActiva, etiquetaCategoria, hayBusqueda]);
+
+  const claveCatalogo = useMemo(
+    () =>
+      JSON.stringify({
+        categoriaActiva,
+        terminoBusqueda: terminoBusqueda.trim(),
+        generos: filtros?.generos || [],
+        orden: filtros?.orden || "catalogo",
+      }),
+    [categoriaActiva, terminoBusqueda, filtros],
+  );
+
   const mostrarDetalle = (item) => {
-    const obraNormalizada = normalizarObra(item);
+    const obraRecibida = item?.libreria || item;
+    const obraCatalogo = mediaData.find(
+      (obra) => String(obra?.id) === String(obraRecibida?.id),
+    );
+
+    /*
+     * Algunas vistas, como las reseñas del perfil, pueden entregar una obra
+     * con pocos campos. La combinamos con el registro completo del catálogo
+     * para conservar banner, sinopsis, géneros y demás información.
+     */
+    const obraCompleta = {
+      ...(obraCatalogo || {}),
+      ...(obraRecibida || {}),
+      banner: obraRecibida?.banner || obraCatalogo?.banner || null,
+      imagenBanner:
+        obraRecibida?.imagenBanner ||
+        obraRecibida?.banner ||
+        obraCatalogo?.imagenBanner ||
+        obraCatalogo?.banner ||
+        null,
+    };
+
+    const obraNormalizada = normalizarObra(obraCompleta);
 
     if (!obraNormalizada?.id) return;
 
@@ -259,6 +514,11 @@ function App() {
     setItemSeleccionado(null);
     setPerfilPublicoId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const limpiarBusquedaYFiltros = () => {
+    setTerminoBusqueda("");
+    setFiltros(FILTROS_INICIALES);
   };
 
   const guardarVistaAnteriorPerfil = () => {
@@ -310,7 +570,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-neutral-950 text-(--text) selection:bg-(--accent) selection:text-white lg:pl-64">
+    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-(--color-page) text(--color-text) selection:bg-(--accent) selection:text-white lg:pl-64">
       <Nav
         setCategoriaActiva={setCategoriaActiva}
         setTerminoBusqueda={setTerminoBusqueda}
@@ -322,21 +582,22 @@ function App() {
         generosDisponibles={generosDisponibles}
         filtros={filtros}
         onAplicarFiltros={setFiltros}
+        tema={tema}
+        onCambiarTema={alternarTema}
       />
 
-      {/* Reserva el espacio del nav fijo para que no cubra el contenido. */}
       <div className="h-14 sm:h-16" aria-hidden="true" />
 
       {vista === "inicio" && (
         <>
-          <div className="w-full min-w-0 overflow-hidden pt-0 sm:pt-2">
-            {itemBanner && (
+          {mostrarBanner && itemBanner && (
+            <div className="w-full min-w-0 overflow-hidden pt-0 sm:pt-2">
               <Banner
                 item={itemBanner}
                 onVerDetalles={() => mostrarDetalle(itemBanner)}
               />
-            )}
-          </div>
+            </div>
+          )}
 
           {error && (
             <div className="mx-auto mt-6 w-full max-w-350 px-4 sm:px-6 md:px-8 lg:px-12">
@@ -347,34 +608,71 @@ function App() {
           )}
 
           <main className="mx-auto w-full min-w-0 max-w-350 overflow-hidden px-4 py-10 sm:px-6 md:px-8 md:py-12 lg:px-12">
-            <h2 className="mb-6 border-l-4 border-(--accent) pl-3 text-left text-base font-black uppercase tracking-widest sm:text-lg md:text-xl">
-              {categoriaActiva === "Todas"
-                ? "Catálogo por géneros"
-                : etiquetaCategoria}
-            </h2>
-
             {loading ? (
-              <p className="py-12 text-center text-zinc-500">
+              <p className="py-12 text-center text-(--color-text-muted)">
                 Cargando catálogo...
               </p>
-            ) : Object.keys(generosMap).length === 0 ? (
-              <p className="py-12 text-center text-zinc-500">
-                No se encontraron obras con esos filtros.
-              </p>
+            ) : modoDescubrimiento ? (
+              <>
+                <h2 className="theme-page-title mb-8 border-l-4 border-(--accent) pl-3 text-left text-lg font-black uppercase tracking-widest sm:text-xl md:text-2xl">
+                  Descubre nuevas obras
+                </h2>
+
+                {seccionesDestacadas.recomendadas.length > 0 && (
+                  <CarruselCatalogo
+                    titulo="Más recomendadas"
+                    items={seccionesDestacadas.recomendadas}
+                    renderItem={(item) => (
+                      <Tarjeta
+                        item={item}
+                        onClick={() => mostrarDetalle(item)}
+                      />
+                    )}
+                  />
+                )}
+
+                {seccionesDestacadas.comentadas.length > 0 && (
+                  <CarruselCatalogo
+                    titulo="Más comentadas"
+                    items={seccionesDestacadas.comentadas}
+                    renderItem={(item) => (
+                      <Tarjeta
+                        item={item}
+                        onClick={() => mostrarDetalle(item)}
+                      />
+                    )}
+                  />
+                )}
+
+                {seccionesDestacadas.recientes.length > 0 && (
+                  <CarruselCatalogo
+                    titulo="Añadidas recientemente"
+                    items={seccionesDestacadas.recientes}
+                    renderItem={(item) => (
+                      <Tarjeta
+                        item={item}
+                        onClick={() => mostrarDetalle(item)}
+                      />
+                    )}
+                  />
+                )}
+
+                {mediaData.length === 0 && (
+                  <p className="py-12 text-center text-(--color-text-muted)">
+                    Aún no hay obras en el catálogo.
+                  </p>
+                )}
+              </>
             ) : (
-              Object.entries(generosMap).map(([genero, items]) => (
-                <CarruselCatalogo
-                  key={genero}
-                  titulo={genero}
-                  items={items}
-                  renderItem={(item) => (
-                    <Tarjeta
-                      item={item}
-                      onClick={() => mostrarDetalle(item)}
-                    />
-                  )}
-                />
-              ))
+              <CatalogoCompleto
+                titulo={tituloCatalogo}
+                items={datosFiltrados}
+                terminoBusqueda={terminoBusqueda}
+                filtros={filtros}
+                onLimpiarFiltros={limpiarBusquedaYFiltros}
+                onVerDetalle={mostrarDetalle}
+                claveReinicio={claveCatalogo}
+              />
             )}
           </main>
         </>
@@ -402,6 +700,12 @@ function App() {
 
       {vista === "listas" && (
         <Listas onVolver={volverAInicio} onVerDetalle={mostrarDetalle} />
+      )}
+
+      {mostrarActualizarPassword && (
+        <ActualizarPasswordModal
+          onCerrar={() => setMostrarActualizarPassword(false)}
+        />
       )}
     </div>
   );

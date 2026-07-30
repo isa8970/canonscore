@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "../config/supabaseClient";
+import ImagenConPlaceholder from "./ImagenConPlaceholder";
 import { useAuth } from "../context/AuthContext";
 
 import estrellaLlena from "/Favoritos-lleno.png";
@@ -28,9 +29,8 @@ const Listas = ({ onVolver, onVerDetalle }) => {
   const menuListaRef = useRef(null);
 
   const esListaFavoritos = (lista) =>
-    String(lista?.nombre || "")
-      .trim()
-      .toLowerCase() === NOMBRE_FAVORITOS.toLowerCase();
+    String(lista?.nombre || "").trim().toLowerCase() ===
+    NOMBRE_FAVORITOS.toLowerCase();
 
   const ordenarListas = (datos) =>
     [...datos].sort((a, b) => {
@@ -97,8 +97,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
 
       const { data, error: listasError } = await supabase
         .from("listas")
-        .select(
-          `
+        .select(`
           id,
           nombre,
           es_privada,
@@ -116,8 +115,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
               generos
             )
           )
-        `,
-        )
+        `)
         .eq("user_id", usuario.id)
         .order("id", { ascending: true });
 
@@ -214,12 +212,14 @@ const Listas = ({ onVolver, onVerDetalle }) => {
     }
 
     if (nombre.length > MAX_NOMBRE_LISTA) {
-      setError(`El nombre no puede superar ${MAX_NOMBRE_LISTA} caracteres.`);
+      setError(
+        `El nombre no puede superar ${MAX_NOMBRE_LISTA} caracteres.`,
+      );
       return;
     }
 
     if (nombre.toLowerCase() === NOMBRE_FAVORITOS.toLowerCase()) {
-      setError("El nombre “Favoritos” está reservado.");
+      setError('El nombre “Favoritos” está reservado.');
       return;
     }
 
@@ -314,12 +314,14 @@ const Listas = ({ onVolver, onVerDetalle }) => {
     }
 
     if (nombre.length > MAX_NOMBRE_LISTA) {
-      setError(`El nombre no puede superar ${MAX_NOMBRE_LISTA} caracteres.`);
+      setError(
+        `El nombre no puede superar ${MAX_NOMBRE_LISTA} caracteres.`,
+      );
       return;
     }
 
     if (nombre.toLowerCase() === NOMBRE_FAVORITOS.toLowerCase()) {
-      setError("El nombre “Favoritos” está reservado.");
+      setError('El nombre “Favoritos” está reservado.');
       return;
     }
 
@@ -449,7 +451,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-zinc-950 pb-24 text-white">
+    <div className="min-h-screen w-full bg-(--color-page) pb-24 text-(--color-text)">
       <div className="mx-auto max-w-300 px-6 pt-8">
         <button
           type="button"
@@ -477,14 +479,13 @@ const Listas = ({ onVolver, onVerDetalle }) => {
             <p className="text-[10px] font-black uppercase tracking-[0.28em] text-(--accent)">
               Tu biblioteca personal
             </p>
-            <h2 className="mt-2 text-3xl font-black tracking-tight">
+            <h2 className="theme-page-title mt-2 text-3xl font-black tracking-tight">
               Mis listas y favoritos
             </h2>
             {!esInvitado && usuario && (
               <p className="mt-2 text-sm text-zinc-500">
                 {listas.length} {listas.length === 1 ? "lista" : "listas"} ·{" "}
-                {totalObras}{" "}
-                {totalObras === 1 ? "obra guardada" : "obras guardadas"}
+                {totalObras} {totalObras === 1 ? "obra guardada" : "obras guardadas"}
               </p>
             )}
           </div>
@@ -505,16 +506,14 @@ const Listas = ({ onVolver, onVerDetalle }) => {
         </div>
 
         {esInvitado || !usuario ? (
-          <div className="mt-10 rounded-2xl border border-white/10 bg-zinc-900/40 p-8 text-center">
+          <div className="theme-surface mt-10 rounded-2xl border p-8 text-center shadow-(--shadow-card)">
             <img
               src={marcadorLleno}
               alt=""
               aria-hidden="true"
               className="mx-auto h-10 w-10 object-contain opacity-70"
             />
-            <h3 className="mt-4 text-lg font-bold">
-              Inicia sesión para usar listas
-            </h3>
+            <h3 className="mt-4 text-lg font-bold">Inicia sesión para usar listas</h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
               Podrás guardar favoritos, crear listas personalizadas y decidir si
               son públicas o privadas.
@@ -525,7 +524,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
             {mostrarCrear && (
               <form
                 onSubmit={crearLista}
-                className="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-zinc-900/40 p-5 md:grid-cols-[1fr_auto_auto] md:items-end"
+                className="theme-surface mt-6 grid gap-4 rounded-2xl border p-5 shadow-(--shadow-card) md:grid-cols-[1fr_auto_auto] md:items-end"
               >
                 <div>
                   <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-zinc-500">
@@ -535,15 +534,13 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                     type="text"
                     maxLength={MAX_NOMBRE_LISTA}
                     value={nombreNuevaLista}
-                    onChange={(evento) =>
-                      setNombreNuevaLista(evento.target.value)
-                    }
+                    onChange={(evento) => setNombreNuevaLista(evento.target.value)}
                     placeholder="Ej. Películas para el fin de semana"
-                    className="w-full rounded-xl border border-white/10 bg-zinc-950 p-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-(--accent)/50"
+                    className="theme-input w-full rounded-xl border p-3 text-sm outline-none placeholder:text-(--color-text-muted) focus:border-(--accent)/50"
                   />
                 </div>
 
-                <label className="flex h-11.5 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-zinc-950 px-4">
+                <label className="theme-input flex h-11.5 cursor-pointer items-center gap-3 rounded-xl border px-4">
                   <input
                     type="checkbox"
                     checked={nuevaListaPrivada}
@@ -586,9 +583,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
             )}
 
             {cargando ? (
-              <p className="mt-10 text-sm text-zinc-500">
-                Cargando tus listas...
-              </p>
+              <p className="mt-10 text-sm text-zinc-500">Cargando tus listas...</p>
             ) : (
               <div className="mt-8 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
                 <aside className="space-y-2">
@@ -604,7 +599,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                         className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all ${
                           activa
                             ? "border-(--accent)/35 bg-(--accent)/12"
-                            : "border-white/5 bg-zinc-900/35 hover:border-white/10 hover:bg-zinc-900/60"
+                            : "border-(--color-border) bg-(--color-surface) shadow-(--shadow-card) hover:border-(--color-border-strong) hover:bg-(--color-surface-soft)"
                         }`}
                       >
                         <img
@@ -619,8 +614,8 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                           </p>
                           <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-600">
                             {lista.lista_items.length}{" "}
-                            {lista.lista_items.length === 1 ? "obra" : "obras"}{" "}
-                            · {lista.es_privada ? "Privada" : "Pública"}
+                            {lista.lista_items.length === 1 ? "obra" : "obras"} ·{" "}
+                            {lista.es_privada ? "Privada" : "Pública"}
                           </p>
                         </div>
                       </button>
@@ -628,7 +623,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                   })}
                 </aside>
 
-                <section className="min-w-0 rounded-2xl border border-white/10 bg-zinc-900/30 p-5 sm:p-6">
+                <section className="theme-surface min-w-0 rounded-2xl border p-5 shadow-(--shadow-card) sm:p-6">
                   {!listaActiva ? (
                     <p className="text-sm text-zinc-500">
                       Selecciona una lista.
@@ -709,7 +704,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                           {menuListaAbierto && (
                             <div
                               role="menu"
-                              className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-zinc-950 p-1.5 shadow-2xl shadow-black/50"
+                              className="theme-surface absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border p-1.5 shadow-2xl"
                             >
                               <button
                                 type="button"
@@ -733,9 +728,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                                       : "border-white/10 bg-white/5 text-zinc-500"
                                   }`}
                                 >
-                                  {listaActiva.es_privada
-                                    ? "Pública"
-                                    : "Privada"}
+                                  {listaActiva.es_privada ? "Pública" : "Privada"}
                                 </span>
                               </button>
 
@@ -790,7 +783,7 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                             return (
                               <article
                                 key={registro.id}
-                                className="group overflow-hidden rounded-xl border border-white/5 bg-zinc-950/60"
+                                className="group overflow-hidden rounded-xl border border-(--color-border) bg-(--color-surface-raised) shadow-(--shadow-card) transition-all hover:-translate-y-0.5 hover:shadow-(--shadow-card-hover)"
                               >
                                 <button
                                   type="button"
@@ -798,18 +791,13 @@ const Listas = ({ onVolver, onVerDetalle }) => {
                                   disabled={!obra}
                                   className="block w-full text-left disabled:cursor-default"
                                 >
-                                  <div className="aspect-3/4 overflow-hidden bg-zinc-900">
-                                    {obra?.cover ? (
-                                      <img
-                                        src={obra.cover}
-                                        alt={obra.titulo}
-                                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                      />
-                                    ) : (
-                                      <div className="flex h-full items-center justify-center text-xs text-zinc-600">
-                                        Sin portada
-                                      </div>
-                                    )}
+                                  <div className="aspect-3/4 overflow-hidden bg-(--color-image-bg)">
+                                    <ImagenConPlaceholder
+                                      src={obra?.cover}
+                                      alt={obra?.titulo || "Portada"}
+                                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                      iconClassName="h-12 w-12"
+                                    />
                                   </div>
                                   <div className="p-3">
                                     <p className="line-clamp-2 text-sm font-bold text-white">

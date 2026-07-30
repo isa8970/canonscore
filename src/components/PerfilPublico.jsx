@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { supabase } from "../config/supabaseClient";
+import ImagenConPlaceholder from "./ImagenConPlaceholder";
 
 import iconoBuena from "/premio.png";
 import iconoMala from "/bandera.png";
@@ -287,7 +288,7 @@ const PerfilPublico = ({ perfilId, onVolver, onVerDetalle }) => {
 
             <div className="flex min-w-0 flex-col items-center text-center md:items-start md:text-left">
               <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-                <h1 className="break-all text-3xl font-black tracking-tight">
+                <h1 className="theme-profile-username break-all text-3xl font-black tracking-tight">
                   {perfilPublico.username || "Usuario"}
                 </h1>
 
@@ -374,17 +375,12 @@ const PerfilPublico = ({ perfilId, onVolver, onVerDetalle }) => {
                         className="group flex min-w-0 items-center gap-3 text-left"
                       >
                         <div className="h-14 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-800">
-                          {resenia.libreria?.cover ? (
-                            <img
-                              src={resenia.libreria.cover}
-                              alt={resenia.libreria.titulo}
-                              className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[8px] text-zinc-600">
-                              Sin portada
-                            </div>
-                          )}
+                          <ImagenConPlaceholder
+                            src={resenia.libreria?.cover}
+                            alt={resenia.libreria?.titulo || "Portada"}
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                            iconClassName="h-6 w-6"
+                          />
                         </div>
 
                         <div className="min-w-0">
@@ -486,17 +482,12 @@ const PerfilPublico = ({ perfilId, onVolver, onVerDetalle }) => {
                               className="group overflow-hidden rounded-xl border border-white/5 bg-zinc-900/40 text-left transition-all hover:border-(--accent)/30"
                             >
                               <div className="aspect-3/4 bg-zinc-800">
-                                {item.libreria?.cover ? (
-                                  <img
-                                    src={item.libreria.cover}
-                                    alt={item.libreria.titulo}
-                                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-xs text-zinc-600">
-                                    Sin portada
-                                  </div>
-                                )}
+                                <ImagenConPlaceholder
+                                  src={item.libreria?.cover}
+                                  alt={item.libreria?.titulo || "Portada"}
+                                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                  iconClassName="h-12 w-12"
+                                />
                               </div>
 
                               <div className="p-3">

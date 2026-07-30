@@ -4,6 +4,15 @@ import { supabase } from "../config/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import ModalPortal from "./ModalPortal";
 import AgregarAListaModal from "./AgregarAListaModal";
+import ImagenConPlaceholder from "./ImagenConPlaceholder";
+import {
+  MAX_DETALLE_REPORTE,
+  MAX_RESENIA as MAX_CARACTERES,
+  MIN_DETALLE_OTRO,
+  MIN_RESENIA as MIN_CARACTERES,
+  validarReporte,
+  validarResenia,
+} from "../utils/validaciones";
 
 import iconoBuena from "/premio.png";
 import iconoMala from "/bandera.png";
@@ -12,9 +21,6 @@ import favoritoLleno from "/Favoritos-lleno.png";
 import guardarVacio from "/Guardar-vacio.png";
 import guardarLleno from "/Guardar-lleno.png";
 
-const MIN_CARACTERES = 15;
-const MAX_CARACTERES = 1000;
-const MAX_DETALLES_REPORTE = 500;
 const NOMBRE_FAVORITOS = "Favoritos";
 
 const MOTIVOS_REPORTE = [
@@ -57,6 +63,12 @@ const ReportarReseniaModal = ({ resenia, onCerrar, onReportado }) => {
 
     if (resenia.user_id === usuario.id) {
       setErrorReporte("No puedes reportar tu propia reseña.");
+      return;
+    }
+
+    const errorValidacion = validarReporte({ motivo, detalles });
+    if (errorValidacion) {
+      setErrorReporte(errorValidacion);
       return;
     }
 
@@ -140,7 +152,7 @@ const ReportarReseniaModal = ({ resenia, onCerrar, onReportado }) => {
             <select
               id="motivo-reporte"
               value={motivo}
-              onChange={(evento) => setMotivo(evento.target.value)}
+              onChange={(evento) => { setMotivo(evento.target.value); setErrorReporte(null); }}
               disabled={enviandoReporte}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white outline-none focus:border-amber-500/50 disabled:opacity-50"
             >
@@ -158,18 +170,20 @@ const ReportarReseniaModal = ({ resenia, onCerrar, onReportado }) => {
                 htmlFor="detalles-reporte"
                 className="text-xs font-bold uppercase tracking-wider text-zinc-500"
               >
-                Detalles opcionales
+                {motivo === "otro" ? "Detalles obligatorios" : "Detalles opcionales"}
               </label>
               <span className="text-[10px] font-mono text-zinc-600">
-                {detalles.length} / {MAX_DETALLES_REPORTE}
+                {detalles.length} / {MAX_DETALLE_REPORTE}
               </span>
             </div>
             <textarea
               id="detalles-reporte"
               rows="4"
-              maxLength={MAX_DETALLES_REPORTE}
+              maxLength={MAX_DETALLE_REPORTE}
+              minLength={motivo === "otro" ? MIN_DETALLE_OTRO : undefined}
+              required={motivo === "otro"}
               value={detalles}
-              onChange={(evento) => setDetalles(evento.target.value)}
+              onChange={(evento) => { setDetalles(evento.target.value); setErrorReporte(null); }}
               disabled={enviandoReporte}
               placeholder="Explica brevemente por qué reportas esta reseña..."
               className="w-full resize-none rounded-xl border border-white/10 bg-zinc-900 p-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-amber-500/50 disabled:opacity-50"
@@ -215,6 +229,7 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
   const [errorDisponibilidad, setErrorDisponibilidad] = useState(null);
   const [nuevoComentario, setNuevoComentario] = useState("");
   const [ratingPositivo, setRatingPositivo] = useState(true);
+  const [reseniaEditandoId, setReseniaEditandoId] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState(null);
   const [reseniaProcesando, setReseniaProcesando] = useState(null);
@@ -272,6 +287,31 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
       activo = false;
     };
   }, [item?.id]);
+
+  useEffect(() => {
+    if (cargandoComentarios) return;
+
+    if (!usuario?.id) {
+      setReseniaEditandoId(null);
+      setNuevoComentario("");
+      setRatingPositivo(true);
+      return;
+    }
+
+    const propia = comentarios.find(
+      (comentario) => String(comentario.user_id) === String(usuario.id),
+    );
+
+    if (propia) {
+      setReseniaEditandoId(propia.id);
+      setNuevoComentario(propia.review_text || "");
+      setRatingPositivo(propia.rating === true);
+    } else {
+      setReseniaEditandoId(null);
+      setNuevoComentario("");
+      setRatingPositivo(true);
+    }
+  }, [cargandoComentarios, comentarios, item?.id, usuario?.id]);
 
   useEffect(() => {
     if (!item?.id) return undefined;
@@ -558,48 +598,123 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
       return;
     }
 
-    if (!textoValido) return;
+    const errorValidacion = validarResenia(nuevoComentario);
+    if (errorValidacion) {
+      setErrorEnvio(errorValidacion);
+      return;
+    }
 
     setEnviando(true);
     setErrorEnvio(null);
     setMensajeAccion(null);
 
-    const { data, error } = await supabase
-      .from("resenias")
-      .insert({
-        libreria_id: item.id,
-        user_id: usuario.id,
-        rating: ratingPositivo,
-        review_text: nuevoComentario.trim(),
-      })
-      .select(`
-        id,
-        libreria_id,
-        user_id,
-        rating,
-        review_text,
-        created_at,
-        perfiles (
-          username,
-          pfp
-        )
-      `)
-      .single();
+    const payload = {
+      rating: ratingPositivo === true,
+      review_text: nuevoComentario.trim(),
+    };
+
+    const camposResenia = `
+      id,
+      libreria_id,
+      user_id,
+      rating,
+      review_text,
+      created_at,
+      perfiles (
+        username,
+        pfp
+      )
+    `;
+
+    let data = null;
+    let error = null;
+
+    if (reseniaEditandoId) {
+      const resultado = await supabase
+        .from("resenias")
+        .update(payload)
+        .eq("id", reseniaEditandoId)
+        .eq("user_id", usuario.id)
+        .eq("libreria_id", item.id)
+        .select(camposResenia)
+        .maybeSingle();
+
+      data = resultado.data;
+      error = resultado.error;
+    } else {
+      const resultado = await supabase
+        .from("resenias")
+        .insert({
+          libreria_id: item.id,
+          user_id: usuario.id,
+          ...payload,
+        })
+        .select(camposResenia)
+        .single();
+
+      data = resultado.data;
+      error = resultado.error;
+    }
 
     setEnviando(false);
 
     if (error) {
-      console.error("Error publicando reseña:", error);
-      setErrorEnvio("No se pudo publicar tu reseña. Intenta nuevamente.");
+      console.error("Error guardando reseña:", error);
+
+      if (error.code === "23505") {
+        setErrorEnvio(
+          "Ya publicaste una reseña para esta obra. Actualiza la existente.",
+        );
+      } else if (error.code === "42501") {
+        setErrorEnvio(
+          "No tienes permiso para actualizar esta reseña. Revisa la política UPDATE de Supabase.",
+        );
+      } else if (error.code === "23514") {
+        setErrorEnvio(
+          "La reseña no cumple las reglas de longitud o valoración.",
+        );
+      } else {
+        setErrorEnvio("No se pudo guardar tu reseña. Intenta nuevamente.");
+      }
       return;
     }
 
-    setComentarios((anteriores) => [data, ...anteriores]);
-    setNuevoComentario("");
-    setRatingPositivo(true);
+    if (!data) {
+      setErrorEnvio(
+        "La reseña no se actualizó. Verifica que te pertenezca y que Supabase permita editar reseñas propias.",
+      );
+      return;
+    }
+
+    setComentarios((anteriores) => {
+      const yaExiste = anteriores.some((comentario) => comentario.id === data.id);
+      if (yaExiste) {
+        return anteriores.map((comentario) =>
+          comentario.id === data.id ? data : comentario,
+        );
+      }
+      return [data, ...anteriores];
+    });
+
+    setReseniaEditandoId(data.id);
+    setNuevoComentario(data.review_text);
+    setRatingPositivo(data.rating === true);
     setMensajeAccion({
       tipo: "exito",
-      texto: "Tu reseña se publicó correctamente.",
+      texto: reseniaEditandoId
+        ? "Tu reseña se actualizó correctamente."
+        : "Tu reseña se publicó correctamente.",
+    });
+  };
+
+  const editarReseniaDesdeTarjeta = (resenia) => {
+    setReseniaEditandoId(resenia.id);
+    setNuevoComentario(resenia.review_text || "");
+    setRatingPositivo(resenia.rating === true);
+    setErrorEnvio(null);
+    document.getElementById("form-resenia")?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
     });
   };
 
@@ -655,6 +770,11 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
     setComentarios((anteriores) =>
       anteriores.filter((comentario) => comentario.id !== resenia.id),
     );
+    if (reseniaEditandoId === resenia.id) {
+      setReseniaEditandoId(null);
+      setNuevoComentario("");
+      setRatingPositivo(true);
+    }
     setMensajeAccion({ tipo: "exito", texto: "La reseña fue eliminada." });
   };
 
@@ -715,14 +835,17 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-zinc-950 pb-24 text-white">
-      <div className="relative h-[22vh] w-full overflow-hidden md:h-[45vh]">
-        <img
+    <div className="min-h-screen w-full bg-(--color-page) pb-24 text-(--color-text)">
+      <div className="theme-inverse relative h-[22vh] w-full overflow-hidden md:h-[45vh]">
+        <ImagenConPlaceholder
           src={bannerMostrado}
           alt={item.titulo}
-          className="h-full w-full scale-105 object-cover object-top opacity-40 blur-sm"
+          loading="eager"
+          className="detail-hero-image h-full w-full object-cover object-top"
+          placeholderClassName="opacity-100"
+          iconClassName="h-20 w-20 md:h-28 md:w-28"
         />
-        <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
+        <div className="detail-hero-overlay absolute inset-0" />
         <button
           type="button"
           onClick={onVolver}
@@ -748,14 +871,16 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
       <div className="relative z-10 mx-auto -mt-24 grid max-w-300 grid-cols-1 gap-8 px-6 md:-mt-48 md:grid-cols-3 md:gap-12">
         <div className="flex flex-col items-center md:items-start">
           <div className="aspect-3/4 w-64 overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
-            <img
+            <ImagenConPlaceholder
               src={imagenMostrada}
               alt={item.titulo}
+              loading="eager"
               className="h-full w-full object-cover"
+              iconClassName="h-20 w-20"
             />
           </div>
 
-          <div className="mt-6 w-full rounded-2xl border border-white/5 bg-zinc-900/50 p-5">
+          <div className="theme-surface mt-6 w-full rounded-2xl border p-5 shadow-(--shadow-card)">
             <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-(--accent)">
               {item.titulo}
             </h4>
@@ -856,7 +981,7 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
           <span className="mb-3 self-start rounded-md border border-(--accent)/30 bg-(--accent)/20 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-(--accent)">
             {item.tipo}
           </span>
-          <h2 className="mb-4 text-4xl font-extrabold tracking-tight md:text-5xl">
+          <h2 className="theme-detail-title mb-4 text-4xl font-extrabold tracking-tight md:text-5xl">
             {item.titulo}
           </h2>
 
@@ -916,7 +1041,7 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
           <section className="mt-6">
             <h3 className="mb-6 flex items-center gap-2 text-xl font-bold">
               Sección de reseñas
-              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
+              <span className="theme-review-count rounded-full px-2.5 py-0.5 text-xs font-black">
                 {comentarios.length}
               </span>
             </h3>
@@ -934,11 +1059,11 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
             )}
 
             {esInvitado || !usuario ? (
-              <div className="mb-8 rounded-xl border border-white/5 bg-zinc-900/40 p-4 text-sm text-zinc-400">
+              <div className="theme-surface-soft mb-8 rounded-xl border p-4 text-sm text-(--color-text-secondary)">
                 Inicia sesión para dejar tu reseña sobre esta obra.
               </div>
             ) : (
-              <form onSubmit={deponerComentario} className="mb-8">
+              <form id="form-resenia" onSubmit={deponerComentario} className="mb-8">
                 <textarea
                   rows="3"
                   maxLength={MAX_CARACTERES}
@@ -947,8 +1072,8 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
                     setNuevoComentario(evento.target.value);
                     if (errorEnvio) setErrorEnvio(null);
                   }}
-                  placeholder="Escribe tu reseña u opinión sobre esta obra..."
-                  className="w-full resize-none rounded-xl border border-white/10 bg-zinc-900 p-4 text-base text-white outline-none placeholder:text-zinc-600 focus:border-(--accent)/50"
+                  placeholder={reseniaEditandoId ? "Actualiza tu reseña..." : "Escribe tu reseña u opinión sobre esta obra..."}
+                  className="theme-input w-full resize-none rounded-xl border p-4 text-base outline-none placeholder:text-(--color-text-muted) focus:border-(--accent)/50"
                 />
 
                 <div className="mt-1.5 flex items-center justify-between px-1">
@@ -1010,7 +1135,7 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
                   disabled={enviando || !textoValido}
                   className="mt-3 rounded-xl bg-(--accent) px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {enviando ? "Publicando..." : "Publicar reseña"}
+                  {enviando ? "Guardando..." : reseniaEditandoId ? "Guardar cambios" : "Publicar reseña"}
                 </button>
               </form>
             )}
@@ -1094,14 +1219,23 @@ const Detalle = ({ item, onVolver, onVerPerfil }) => {
                       {usuario && (
                         <div className="mt-4 flex justify-end border-t border-white/5 pt-3">
                           {esPropietario ? (
-                            <button
-                              type="button"
-                              onClick={() => eliminarResenia(comentario)}
-                              disabled={estaProcesando}
-                              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-500/20 disabled:opacity-40"
-                            >
-                              {estaProcesando ? "Eliminando..." : "Eliminar"}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => editarReseniaDesdeTarjeta(comentario)}
+                                className="rounded-lg border border-(--accent)/25 bg-(--accent)/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-(--accent) hover:bg-(--accent)/20"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => eliminarResenia(comentario)}
+                                disabled={estaProcesando}
+                                className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-500/20 disabled:opacity-40"
+                              >
+                                {estaProcesando ? "Eliminando..." : "Eliminar"}
+                              </button>
+                            </div>
                           ) : (
                             <button
                               type="button"

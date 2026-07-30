@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../config/supabaseClient";
 import EditarPerfilModal from "./EditarPerfilModal";
+import ImagenConPlaceholder from "./ImagenConPlaceholder";
 
 import iconoBuena from "/premio.png";
 import iconoMala from "/bandera.png";
@@ -37,8 +38,7 @@ const Perfil = ({ onVolver, onVerDetalle }) => {
 
       const { data, error } = await supabase
         .from("resenias")
-        .select(
-          `
+        .select(`
           id,
           rating,
           review_text,
@@ -47,10 +47,13 @@ const Perfil = ({ onVolver, onVerDetalle }) => {
             id,
             titulo,
             cover,
-            tipo
+            banner,
+            tipo,
+            anio_pub,
+            sinopsis,
+            generos
           )
-        `,
-        )
+        `)
         .eq("user_id", usuario.id)
         .order("created_at", { ascending: false });
 
@@ -130,8 +133,7 @@ const Perfil = ({ onVolver, onVerDetalle }) => {
 
         const { data: items, error: itemsError } = await supabase
           .from("lista_items")
-          .select(
-            `
+          .select(`
             id,
             libreria (
               id,
@@ -143,8 +145,7 @@ const Perfil = ({ onVolver, onVerDetalle }) => {
               sinopsis,
               generos
             )
-          `,
-          )
+          `)
           .eq("lista_id", lista.id)
           .order("id", { ascending: false });
 
@@ -299,12 +300,11 @@ const Perfil = ({ onVolver, onVerDetalle }) => {
             </div>
 
             <div className="flex flex-col items-center text-center md:items-start md:text-left">
-              <h2 className="mb-1 text-2xl font-black tracking-tight">
+              <h2 className="theme-profile-username text-2xl font-black tracking-tight">
                 {perfil?.username || "Usuario"}
               </h2>
-              <p className="mb-3 text-xs text-zinc-600">{usuario.email}</p>
               {perfil?.bio && (
-                <p className="max-w-md text-sm leading-relaxed text-zinc-400">
+                <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">
                   {perfil.bio}
                 </p>
               )}
@@ -354,44 +354,62 @@ const Perfil = ({ onVolver, onVerDetalle }) => {
                     className="rounded-xl border border-white/5 bg-zinc-900/40 p-4"
                   >
                     <div className="mb-3 flex items-start justify-between gap-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <img
-                          src={resenia.rating ? iconoBuena : iconoMala}
-                          alt={
-                            resenia.rating
-                              ? "Reseña positiva"
-                              : "Reseña negativa"
-                          }
-                          title={
-                            resenia.rating ? "Recomendada" : "No recomendada"
-                          }
-                          className="h-7 w-7 shrink-0 object-contain"
-                        />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          resenia.libreria && onVerDetalle?.(resenia.libreria)
+                        }
+                        disabled={!resenia.libreria}
+                        className="group flex min-w-0 items-center gap-3 text-left disabled:cursor-default"
+                      >
+                        <div className="h-14 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-800">
+                          <ImagenConPlaceholder
+                            src={resenia.libreria?.cover}
+                            alt={resenia.libreria?.titulo || "Portada"}
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                            iconClassName="h-6 w-6"
+                          />
+                        </div>
 
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-white">
+                          <p className="truncate text-sm font-bold text-white transition-colors group-hover:text-(--accent)">
                             {resenia.libreria?.titulo || "Obra eliminada"}
                           </p>
-                          <p
-                            className={`mt-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                              resenia.rating
-                                ? "text-amber-300"
-                                : "text-rose-400"
-                            }`}
-                          >
-                            {resenia.rating ? "Recomendada" : "No recomendada"}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="shrink-0 text-right">
-                        <p className="font-mono text-[10px] uppercase text-zinc-600">
-                          {resenia.libreria?.tipo || "Obra"}
-                        </p>
-                        <p className="mt-1 font-mono text-[9px] text-zinc-700">
-                          {formatearFecha(resenia.created_at)}
-                        </p>
-                      </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <img
+                              src={resenia.rating ? iconoBuena : iconoMala}
+                              alt={
+                                resenia.rating
+                                  ? "Reseña positiva"
+                                  : "Reseña negativa"
+                              }
+                              title={
+                                resenia.rating
+                                  ? "Recomendada"
+                                  : "No recomendada"
+                              }
+                              className="h-5 w-5 shrink-0 object-contain"
+                            />
+
+                            <span
+                              className={`text-[9px] font-bold uppercase tracking-wider ${
+                                resenia.rating
+                                  ? "text-amber-300"
+                                  : "text-rose-400"
+                              }`}
+                            >
+                              {resenia.rating
+                                ? "Recomendada"
+                                : "No recomendada"}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+
+                      <span className="shrink-0 font-mono text-[9px] text-zinc-600">
+                        {formatearFecha(resenia.created_at)}
+                      </span>
                     </div>
 
                     <p className="text-sm leading-relaxed text-zinc-400">
@@ -478,24 +496,17 @@ const Perfil = ({ onVolver, onVerDetalle }) => {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() =>
-                        item.libreria && onVerDetalle?.(item.libreria)
-                      }
+                      onClick={() => item.libreria && onVerDetalle?.(item.libreria)}
                       disabled={!item.libreria}
                       className="group overflow-hidden rounded-xl border border-white/5 bg-zinc-900/40 text-left transition-all hover:border-(--accent)/25 disabled:cursor-default"
                     >
                       <div className="aspect-3/4 bg-zinc-800">
-                        {item.libreria?.cover ? (
-                          <img
-                            src={item.libreria.cover}
-                            alt={item.libreria.titulo}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-zinc-600">
-                            Sin portada
-                          </div>
-                        )}
+                        <ImagenConPlaceholder
+                          src={item.libreria?.cover}
+                          alt={item.libreria?.titulo || "Portada"}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          iconClassName="h-10 w-10"
+                        />
                       </div>
 
                       <div className="p-2.5">
